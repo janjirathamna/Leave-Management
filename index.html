@@ -129,19 +129,19 @@
         </button>
       </div>
 
-      <!-- ปุ่ม Export รวม: Excel และ PDF & Picture -->
+      <!-- ปุ่ม Export รวม -->
       <div class="dropdown">
         <button class="btn btn-outline-success btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
-          <i class="bi bi-file-earmark-arrow-down-fill"></i> Export
+          <i class="bi bi-file-earmark-arrow-down-fill"></i> <span data-i18n="menuExport">Export</span>
         </button>
         <ul class="dropdown-menu">
-          <li><a class="dropdown-item" href="#" onclick="exportExcel()"><i class="bi bi-file-earmark-excel text-success me-2"></i> ดาวน์โหลด Excel (XLSX)</a></li>
+          <li><a class="dropdown-item" href="#" onclick="exportExcel()"><i class="bi bi-file-earmark-excel text-success me-2"></i> <span data-i18n="exExcel">ดาวน์โหลด Excel (XLSX)</span></a></li>
           <li><hr class="dropdown-divider"></li>
-          <li><h6 class="dropdown-header text-muted small">PDF & Picture Reports</h6></li>
-          <li><a class="dropdown-item" href="#" onclick="previewReport('pdf', 'portrait')"><i class="bi bi-file-earmark-pdf text-danger me-2"></i> พรีวิว PDF (แนวตั้ง)</a></li>
-          <li><a class="dropdown-item" href="#" onclick="previewReport('pdf', 'landscape')"><i class="bi bi-file-earmark-pdf text-danger me-2"></i> พรีวิว PDF (แนวนอน)</a></li>
-          <li><a class="dropdown-item" href="#" onclick="previewReport('img', 'portrait')"><i class="bi bi-file-earmark-image text-primary me-2"></i> พรีวิวรูปภาพ (แนวตั้ง)</a></li>
-          <li><a class="dropdown-item" href="#" onclick="previewReport('img', 'landscape')"><i class="bi bi-file-earmark-image text-primary me-2"></i> พรีวิวรูปภาพ (แนวนอน)</a></li>
+          <li><h6 class="dropdown-header text-muted small" data-i18n="exHeaderPdf">PDF & Picture Reports</h6></li>
+          <li><a class="dropdown-item" href="#" onclick="previewReport('pdf', 'portrait')"><i class="bi bi-file-earmark-pdf text-danger me-2"></i> <span data-i18n="exPdfP">พรีวิว PDF (แนวตั้ง)</span></a></li>
+          <li><a class="dropdown-item" href="#" onclick="previewReport('pdf', 'landscape')"><i class="bi bi-file-earmark-pdf text-danger me-2"></i> <span data-i18n="exPdfL">พรีวิว PDF (แนวนอน)</span></a></li>
+          <li><a class="dropdown-item" href="#" onclick="previewReport('imgCards', 'portrait')"><i class="bi bi-file-earmark-image text-primary me-2"></i> <span data-i18n="exImgCard">🖼️ เซฟการ์ดสรุปผลเป็นรูปภาพ (Pro Card)</span></a></li>
+          <li><a class="dropdown-item" href="#" onclick="previewReport('imgTable', 'landscape')"><i class="bi bi-file-earmark-image text-primary me-2"></i> <span data-i18n="exImgTable">📊 เซฟตารางรายงานเป็นรูปภาพ</span></a></li>
         </ul>
       </div>
 
@@ -209,7 +209,7 @@
   </div>
 </div>
 
-<!-- MODAL: พรีวิว PDF และรูปภาพ -->
+<!-- MODAL: พรีวิวรายงาน (PDF / รูปภาพการ์ด / รูปภาพตาราง) -->
 <div class="modal fade" id="reportPreviewModal" tabindex="-1">
   <div class="modal-dialog modal-xl modal-dialog-scrollable">
     <div class="modal-content">
@@ -218,19 +218,19 @@
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body bg-secondary bg-opacity-15 p-4 text-center">
-        <!-- พื้นที่พรีวิว (จะปรับความกว้างตามแนวตั้ง/แนวนอนอัตโนมัติ) -->
-        <div id="reportContentArea" class="bg-white p-5 shadow-sm mx-auto text-start" style="max-width: 800px; border-radius: 8px; color: #333;">
-          <div class="text-center border-bottom pb-3 mb-4">
-            <h3 class="fw-bold text-primary mb-1">รายงานสรุปสถิติวันลาพนักงาน</h3>
-            <p class="text-muted mb-0">Employee Leave Summary Report - อัปเดตล่าสุด ณ วันที่ <span id="reportDate"></span> (<span id="reportOrientationLabel"></span>)</p>
+        <!-- พื้นที่พรีวิว -->
+        <div id="reportContentArea" class="bg-white p-4 shadow-sm mx-auto text-start" style="max-width: 900px; border-radius: 12px; color: #333;">
+          <div class="text-center border-bottom pb-3 mb-3">
+            <h4 class="fw-bold text-primary mb-1" data-i18n="repHeaderTitle">รายงานสรุปสถิติวันลาพนักงาน (Executive Snapshot)</h4>
+            <p class="text-muted mb-0"><span data-i18n="repSub">อัปเดตข้อมูลล่าสุด ณ วันที่</span> <span id="reportDate"></span></p>
           </div>
-          <div id="reportSummaryTable"></div>
+          <div id="reportPreviewBody"></div>
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">ยกเลิก</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal" data-i18n="btnCancel">ยกเลิก</button>
         <button type="button" class="btn btn-primary btn-sm px-4 fw-bold" id="btnConfirmDownload" onclick="confirmDownloadReport()">
-          <i class="bi bi-download"></i> ยืนยันดาวน์โหลด
+          <i class="bi bi-download"></i> <span data-i18n="btnConfirmDownload">ยืนยันดาวน์โหลด</span>
         </button>
       </div>
     </div>
@@ -385,9 +385,9 @@
         </div>
 
         <hr>
-        <h6 class="fw-bold small text-warning mb-1">🎉 3. รีเซ็ตวันลาจริงเป็น 0 (ต้อนรับปีใหม่)</h6>
-        <p class="text-muted small mb-2">ล้างค่าวันลาที่ใช้ไปทั้งหมดของทุกคนให้กลับเป็น 0 ทันที (โควต้ายังอยู่เท่าเดิม)</p>
-        <button class="btn btn-outline-danger btn-sm w-100 fw-bold" onclick="resetNewYearLeave()">
+        <h6 class="fw-bold small text-warning mb-1" data-i18n="secResetTitle">🎉 3. รีเซ็ตวันลาจริงเป็น 0 (ต้อนรับปีใหม่)</h6>
+        <p class="text-muted small mb-2" data-i18n="secResetSub">ล้างค่าวันลาที่ใช้ไปทั้งหมดของทุกคนให้กลับเป็น 0 ทันที (โควต้ายังอยู่เท่าเดิม)</p>
+        <button class="btn btn-outline-danger btn-sm w-100 fw-bold" onclick="resetNewYearLeave()" data-i18n="btnResetYear">
           <i class="bi bi-arrow-counterclockwise"></i> รีเซ็ตวันลาจริงทุกคนเป็น 0 (ปีใหม่)
         </button>
 
@@ -427,9 +427,8 @@
   let overviewPie = null;
   let clickTimers = {};
 
-  // ตัวแปรเก็บสถานะการ Export ปัจจุบัน
-  let currentExportType = 'pdf'; // 'pdf' หรือ 'img'
-  let currentOrientation = 'portrait'; // 'portrait' หรือ 'landscape'
+  let currentExportType = 'pdf'; // 'pdf', 'imgCards', 'imgTable'
+  let currentOrientation = 'portrait';
 
   const i18n = {
     th: {
@@ -438,6 +437,13 @@
       tabOverview: 'ภาพรวมเปรียบเทียบ',
       btnAdd: 'เพิ่มพนักงาน',
       btnSettings: 'ตั้งค่า',
+      menuExport: 'Export',
+      exExcel: 'ดาวน์โหลด Excel (XLSX)',
+      exHeaderPdf: 'PDF & Picture Reports',
+      exPdfP: 'พรีวิว PDF (แนวตั้ง)',
+      exPdfL: 'พรีวิว PDF (แนวนอน)',
+      exImgCard: '🖼️ เซฟการ์ดสรุปผลเป็นรูปภาพ (Pro Card)',
+      exImgTable: '📊 เซฟตารางรายงานเป็นรูปภาพ',
       sortDefault: 'เรียงตามลำดับตาราง',
       sortMost: 'ลาบ่อยสุด (ดัชนีการลา % สูง -> ต่ำ)',
       sortLeast: 'ลาน้อยสุด (ดัชนีการลา % ต่ำ -> สูง)',
@@ -476,9 +482,15 @@
       colLow: '< 50% (ปกติ)',
       colMid: '50-79% (เตือน)',
       colHigh: '≥ 80% (วิกฤต)',
+      secResetTitle: '🎉 3. รีเซ็ตวันลาจริงเป็น 0 (ต้อนรับปีใหม่)',
+      secResetSub: 'ล้างค่าวันลาที่ใช้ไปทั้งหมดของทุกคนให้กลับเป็น 0 ทันที (โควต้ายังอยู่เท่าเดิม)',
+      btnResetYear: 'รีเซ็ตวันลาจริงทุกคนเป็น 0 (ปีใหม่)',
       secBulkQuota: '2. อัปเดตโควต้าทุกคนพร้อมกัน (เขียนทับทั้งตาราง)',
       secBulkSub: 'เว้นว่างไว้หากไม่ต้องการเปลี่ยนโควต้าประเภทนั้น',
-      btnApplyBulk: 'อัปเดตโควต้าทุกคนในฐานข้อมูล'
+      btnApplyBulk: 'อัปเดตโควต้าทุกคนในฐานข้อมูล',
+      repHeaderTitle: 'รายงานสรุปสถิติวันลาพนักงาน (Executive Snapshot)',
+      repSub: 'อัปเดตข้อมูลล่าสุด ณ วันที่',
+      btnConfirmDownload: 'ยืนยันดาวน์โหลด'
     },
     en: {
       appTitle: 'Employee Leave Tracker',
@@ -486,6 +498,13 @@
       tabOverview: 'Team Overview',
       btnAdd: 'Add Employee',
       btnSettings: 'Settings',
+      menuExport: 'Export',
+      exExcel: 'Download Excel (XLSX)',
+      exHeaderPdf: 'PDF & Picture Reports',
+      exPdfP: 'Preview PDF (Portrait)',
+      exPdfL: 'Preview PDF (Landscape)',
+      exImgCard: '🖼️ Save Dashboard Cards as Image (Pro Card)',
+      exImgTable: '📊 Save Report Table as Image',
       sortDefault: 'Default Sheet Order',
       sortMost: 'Most Frequent (Leave Index High -> Low)',
       sortLeast: 'Least Frequent (Leave Index Low -> High)',
@@ -524,9 +543,15 @@
       colLow: '< 50% (Normal)',
       colMid: '50-79% (Warning)',
       colHigh: '≥ 80% (Critical)',
+      secResetTitle: '🎉 3. Reset Leave Usage to 0 (New Year)',
+      secResetSub: 'Immediately clear leave usage for all employees back to 0',
+      btnResetYear: 'Reset All Leave Usage to 0 (New Year)',
       secBulkQuota: '2. Bulk Update Quotas for All Employees',
       secBulkSub: 'Leave blank to keep existing quota for that type',
-      btnApplyBulk: 'Apply Quota to Everyone'
+      btnApplyBulk: 'Apply Quota to Everyone',
+      repHeaderTitle: 'Executive Leave Summary Snapshot',
+      repSub: 'Latest updated report as of',
+      btnConfirmDownload: 'Confirm Download'
     }
   };
 
@@ -894,72 +919,99 @@
     XLSX.writeFile(wb, "Employee_Leave_Report.xlsx");
   }
 
-  // --- ฟังก์ชันพรีวิวเอกสาร (แยกตามประเภท PDF หรือ รูปภาพ และ แนวตั้ง หรือ แนวนอน) ---
+  // --- พรีวิวรายงาน (PDF, การ์ดโปร, ตาราง) ---
   function previewReport(type, orientation) {
     currentExportType = type;
     currentOrientation = orientation;
+    const t = i18n[currentLang];
 
     const isPdf = type === 'pdf';
+    const isCard = type === 'imgCards';
     const orientText = orientation === 'portrait' ? (currentLang === 'th' ? 'แนวตั้ง' : 'Portrait') : (currentLang === 'th' ? 'แนวนอน' : 'Landscape');
-    const typeText = isPdf ? 'PDF' : (currentLang === 'th' ? 'รูปภาพ' : 'Image');
+    
+    let titleText = isPdf ? `พรีวิว PDF (${orientText})` : (isCard ? '🖼️ พรีวิวการ์ดสรุปผลผู้บริหาร (Pro Snapshot Card)' : '📊 พรีวิวตารางรายงานเป็นรูปภาพ');
+    document.getElementById('previewModalTitle').innerHTML = `<i class="bi bi-${isPdf ? 'file-earmark-pdf-fill text-danger' : 'file-earmark-image-fill text-primary'}"></i> ${titleText}`;
+    document.getElementById('reportDate').innerText = new Date().toLocaleDateString(currentLang === 'th' ? 'th-TH' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
-    document.getElementById('previewModalTitle').innerHTML = `<i class="bi bi-${isPdf ? 'file-earmark-pdf-fill text-danger' : 'file-earmark-image-fill text-primary'}"></i> พรีวิวรายงาน ${typeText} (${orientText})`;
-    document.getElementById('reportOrientationLabel').innerText = orientText;
-    document.getElementById('reportDate').innerText = new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
-
-    // ปรับขนาดพื้นที่พรีวิวตามแนวตั้งหรือแนวนอน
     const area = document.getElementById('reportContentArea');
-    if (orientation === 'landscape') {
-      area.style.maxWidth = '1050px';
+    area.style.maxWidth = isCard ? '1000px' : (orientation === 'landscape' ? '1050px' : '800px');
+
+    let html = '';
+
+    if (isCard) {
+      // สร้างหน้าตา Pro Card ที่ดีไซน์พิเศษ ต่างจากการแคปจอธรรมดา
+      html = `
+        <div class="row g-3">
+          <div class="col-12 text-center mb-2">
+            <span class="badge bg-primary px-3 py-2 rounded-pill fs-6"><i class="bi bi-shield-check me-1"></i> EXECUTIVE LEAVE DASHBOARD SNAPSHOT</span>
+          </div>
+      `;
+      employeesData.forEach(emp => {
+        const stats = calcFairStats(emp);
+        const indexColor = getBarColor(stats.avgPct);
+        html += `
+          <div class="col-md-4 col-sm-6">
+            <div class="card border rounded-3 p-3 shadow-sm bg-light h-100">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="badge bg-secondary text-white">${emp.empId}</span>
+                <span class="fw-bold" style="color: ${indexColor};">${t.scoreLabel}: ${stats.avgPct}%</span>
+              </div>
+              <h5 class="fw-bold mb-2 text-dark">${emp.name}</h5>
+              <div class="small text-secondary mb-1">🏖️ ${t.typeAnnual}: ${emp.leaves.annual?.used || 0}/${emp.leaves.annual?.quota || 0}</div>
+              <div class="small text-secondary mb-1">ธุระ ${t.typePersonal}: ${emp.leaves.personal?.used || 0}/${emp.leaves.personal?.quota || 0}</div>
+              <div class="small text-secondary mb-1">🏥 ${t.typeSick}: ${emp.leaves.sick?.used || 0}/${emp.leaves.sick?.quota || 0}</div>
+              ${emp.note ? `<div class="mt-2 pt-1 border-top text-muted" style="font-size:11px;"><i class="bi bi-sticky text-warning"></i> ${emp.note}</div>` : ''}
+            </div>
+          </div>
+        `;
+      });
+      html += `</div>`;
     } else {
-      area.style.maxWidth = '800px';
+      // ตารางรายงานมาตรฐานสำหรับ PDF หรือ รูปภาพตาราง
+      html = `
+        <table class="table table-bordered table-striped align-middle" style="font-size: 13px;">
+          <thead class="table-dark text-center">
+            <tr>
+              <th>${t.lblEmpId}</th>
+              <th>${t.lblName}</th>
+              <th>${t.colType}</th>
+              <th>${t.colQuota}</th>
+              <th>${t.colUsed}</th>
+              <th>${currentLang === 'th' ? 'คงเหลือ (วัน)' : 'Remaining'}</th>
+              <th>${t.lblNote}</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+      employeesData.forEach(emp => {
+        ['annual', 'personal', 'sick'].forEach(typeKey => {
+          const l = emp.leaves[typeKey];
+          if (l) {
+            const remain = l.quota - l.used;
+            html += `
+              <tr>
+                <td class="text-center fw-bold">${emp.empId}</td>
+                <td>${emp.name}</td>
+                <td>${l.label}</td>
+                <td class="text-center">${l.quota}</td>
+                <td class="text-center">${l.used}</td>
+                <td class="text-center fw-bold ${remain < 0 ? 'text-danger' : 'text-success'}">${remain}</td>
+                <td><small>${emp.note || '-'}</small></td>
+              </tr>
+            `;
+          }
+        });
+      });
+      html += `</tbody></table>`;
     }
 
-    let html = `
-      <table class="table table-bordered table-striped align-middle" style="font-size: 13px;">
-        <thead class="table-dark text-center">
-          <tr>
-            <th>รหัสพนักงาน</th>
-            <th>ชื่อ-นามสกุล</th>
-            <th>ประเภทการลา</th>
-            <th>โควต้า (วัน)</th>
-            <th>ใช้ไป (วัน)</th>
-            <th>คงเหลือ (วัน)</th>
-            <th>โน้ต</th>
-          </tr>
-        </thead>
-        <tbody>
-    `;
-
-    employeesData.forEach(emp => {
-      ['annual', 'personal', 'sick'].forEach(typeKey => {
-        const l = emp.leaves[typeKey];
-        if (l) {
-          const remain = l.quota - l.used;
-          html += `
-            <tr>
-              <td class="text-center fw-bold">${emp.empId}</td>
-              <td>${emp.name}</td>
-              <td>${l.label}</td>
-              <td class="text-center">${l.quota}</td>
-              <td class="text-center">${l.used}</td>
-              <td class="text-center fw-bold ${remain < 0 ? 'text-danger' : 'text-success'}">${remain}</td>
-              <td><small>${emp.note || '-'}</small></td>
-            </tr>
-          `;
-        }
-      });
-    });
-
-    html += `</tbody></table>`;
-    document.getElementById('reportSummaryTable').innerHTML = html;
-    new bootstrap.Modal(document.getElementById('reportPreviewModal')).show();
+    document.getElementById('reportPreviewBody').innerHTML = html;
+    new bootstrap.Modal(document.getElementById('reportReportPreviewModal') || document.getElementById('reportPreviewModal')).show();
   }
 
-  // --- ฟังก์ชันยืนยันดาวน์โหลด (รองรับทั้ง PDF และ รูปภาพ ทั้งแนวตั้งและแนวนอน) ---
+  // --- ยืนยันดาวน์โหลด (PDF หรือ PNG) ---
   function confirmDownloadReport() {
     const element = document.getElementById('reportContentArea');
-    const isLandscape = currentOrientation === 'landscape';
 
     if (currentExportType === 'pdf') {
       const opt = {
@@ -973,20 +1025,19 @@
         bootstrap.Modal.getInstance(document.getElementById('reportPreviewModal')).hide();
       });
     } else {
-      // ดาวน์โหลดเป็นรูปภาพ (PNG)
+      // แปลงพื้นที่พรีวิวเป็นรูปภาพ PNG Pro Card หรือ Table
+      const filename = currentExportType === 'imgCards' ? 'Executive_Leave_Cards_Snapshot.png' : 'Leave_Summary_Table.png';
       const opt = {
         margin:       10,
-        filename:     `Employee_Leave_Report_${currentOrientation}.png`,
+        filename:     filename,
         image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true, logging: true },
-        jsPDF:        { unit: 'mm', format: 'a4', orientation: currentOrientation }
+        html2canvas:  { scale: 2, useCORS: true }
       };
-      // ใช้ html2pdf เพื่อแปลงเป็น canvas แล้วเซฟเป็นรูปภาพ PNG ทันที
       html2pdf().from(element).set(opt).output('blob').then((blob) => {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `Employee_Leave_Report_${currentOrientation}.png`;
+        a.download = filename;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -1134,6 +1185,7 @@
       : '<i class="bi bi-sun-fill"></i>';
   }
 
+  // --- ฟังก์ชันสลับภาษา (ครอบคลุมทุกปุ่มและข้อความแล้ว) ---
   function toggleLang() {
     currentLang = currentLang === 'th' ? 'en' : 'th';
     document.getElementById('btnLang').innerText = currentLang === 'th' ? 'EN' : 'TH';
