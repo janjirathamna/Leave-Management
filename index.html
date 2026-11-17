@@ -209,7 +209,7 @@
   </div>
 </div>
 
-<!-- MODAL: พรีวิวรายงาน (PDF / รูปภาพการ์ด / รูปภาพตาราง) -->
+<!-- MODAL: พรีวิวรายงาน -->
 <div class="modal fade" id="reportPreviewModal" tabindex="-1">
   <div class="modal-dialog modal-xl modal-dialog-scrollable">
     <div class="modal-content">
@@ -218,7 +218,6 @@
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body bg-secondary bg-opacity-15 p-4 text-center">
-        <!-- พื้นที่พรีวิว -->
         <div id="reportContentArea" class="bg-white p-4 shadow-sm mx-auto text-start" style="max-width: 900px; border-radius: 12px; color: #333;">
           <div class="text-center border-bottom pb-3 mb-3">
             <h4 class="fw-bold text-primary mb-1" data-i18n="repHeaderTitle">รายงานสรุปสถิติวันลาพนักงาน (Executive Snapshot)</h4>
@@ -359,7 +358,7 @@
   </div>
 </div>
 
-<!-- Modal ตั้งค่า -->
+<!-- Modal ตั้งค่า (เรียงลำดับ 1. 2. 3. เรียบร้อย) -->
 <div class="modal fade" id="settingsModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -368,6 +367,7 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
+        <!-- ข้อ 1 -->
         <h6 class="fw-bold small text-primary mb-2" data-i18n="secColor">1. ปรับแต่งสีหลอดพลังงานตามระดับ %</h6>
         <div class="row g-2 mb-3">
           <div class="col-4">
@@ -385,13 +385,7 @@
         </div>
 
         <hr>
-        <h6 class="fw-bold small text-warning mb-1" data-i18n="secResetTitle">🎉 3. รีเซ็ตวันลาจริงเป็น 0 (ต้อนรับปีใหม่)</h6>
-        <p class="text-muted small mb-2" data-i18n="secResetSub">ล้างค่าวันลาที่ใช้ไปทั้งหมดของทุกคนให้กลับเป็น 0 ทันที (โควต้ายังอยู่เท่าเดิม)</p>
-        <button class="btn btn-outline-danger btn-sm w-100 fw-bold" onclick="resetNewYearLeave()" data-i18n="btnResetYear">
-          <i class="bi bi-arrow-counterclockwise"></i> รีเซ็ตวันลาจริงทุกคนเป็น 0 (ปีใหม่)
-        </button>
-
-        <hr class="mt-3">
+        <!-- ข้อ 2 -->
         <h6 class="fw-bold small text-danger mb-1" data-i18n="secBulkQuota">2. อัปเดตโควต้าทุกคนพร้อมกัน (เขียนทับทั้งตาราง)</h6>
         <p class="text-muted small mb-2" data-i18n="secBulkSub">เว้นว่างไว้หากไม่ต้องการเปลี่ยนโควต้าประเภทนั้น</p>
         <div class="row g-2">
@@ -411,6 +405,14 @@
         <button class="btn btn-warning btn-sm w-100 mt-3 fw-bold" onclick="applyBulkQuota()" data-i18n="btnApplyBulk">
           อัปเดตโควต้าทุกคนในฐานข้อมูล
         </button>
+
+        <hr class="mt-3">
+        <!-- ข้อ 3 -->
+        <h6 class="fw-bold small text-warning mb-1" data-i18n="secResetTitle">🎉 3. รีเซ็ตวันลาจริงเป็น 0 (ต้อนรับปีใหม่)</h6>
+        <p class="text-muted small mb-2" data-i18n="secResetSub">ล้างค่าวันลาที่ใช้ไปทั้งหมดของทุกคนให้กลับเป็น 0 ทันที (โควต้ายังอยู่เท่าเดิม)</p>
+        <button class="btn btn-outline-danger btn-sm w-100 fw-bold" onclick="resetNewYearLeave()" data-i18n="btnResetYear">
+          <i class="bi bi-arrow-counterclockwise"></i> รีเซ็ตวันลาจริงทุกคนเป็น 0 (ปีใหม่)
+        </button>
       </div>
     </div>
   </div>
@@ -427,7 +429,7 @@
   let overviewPie = null;
   let clickTimers = {};
 
-  let currentExportType = 'pdf'; // 'pdf', 'imgCards', 'imgTable'
+  let currentExportType = 'pdf'; 
   let currentOrientation = 'portrait';
 
   const i18n = {
@@ -919,7 +921,6 @@
     XLSX.writeFile(wb, "Employee_Leave_Report.xlsx");
   }
 
-  // --- พรีวิวรายงาน (PDF, การ์ดโปร, ตาราง) ---
   function previewReport(type, orientation) {
     currentExportType = type;
     currentOrientation = orientation;
@@ -939,7 +940,6 @@
     let html = '';
 
     if (isCard) {
-      // สร้างหน้าตา Pro Card ที่ดีไซน์พิเศษ ต่างจากการแคปจอธรรมดา
       html = `
         <div class="row g-3">
           <div class="col-12 text-center mb-2">
@@ -967,7 +967,6 @@
       });
       html += `</div>`;
     } else {
-      // ตารางรายงานมาตรฐานสำหรับ PDF หรือ รูปภาพตาราง
       html = `
         <table class="table table-bordered table-striped align-middle" style="font-size: 13px;">
           <thead class="table-dark text-center">
@@ -1006,10 +1005,9 @@
     }
 
     document.getElementById('reportPreviewBody').innerHTML = html;
-    new bootstrap.Modal(document.getElementById('reportReportPreviewModal') || document.getElementById('reportPreviewModal')).show();
+    new bootstrap.Modal(document.getElementById('reportPreviewModal')).show();
   }
 
-  // --- ยืนยันดาวน์โหลด (PDF หรือ PNG) ---
   function confirmDownloadReport() {
     const element = document.getElementById('reportContentArea');
 
@@ -1025,7 +1023,6 @@
         bootstrap.Modal.getInstance(document.getElementById('reportPreviewModal')).hide();
       });
     } else {
-      // แปลงพื้นที่พรีวิวเป็นรูปภาพ PNG Pro Card หรือ Table
       const filename = currentExportType === 'imgCards' ? 'Executive_Leave_Cards_Snapshot.png' : 'Leave_Summary_Table.png';
       const opt = {
         margin:       10,
@@ -1185,7 +1182,6 @@
       : '<i class="bi bi-sun-fill"></i>';
   }
 
-  // --- ฟังก์ชันสลับภาษา (ครอบคลุมทุกปุ่มและข้อความแล้ว) ---
   function toggleLang() {
     currentLang = currentLang === 'th' ? 'en' : 'th';
     document.getElementById('btnLang').innerText = currentLang === 'th' ? 'EN' : 'TH';
