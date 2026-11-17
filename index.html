@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="th" data-bs-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <title>Leave Management Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    :root {
+      --color-low: #10b981;
+      --color-mid: #f59e0b;
+      --color-high: #ef4444;
+      --card-bg: #ffffff;
+      --body-bg: #f3f4f6;
+    }
+    [data-bs-theme="dark"] {
+      --card-bg: #1e293b;
+      --body-bg: #0f172a;
+    }
+    body {
+      font-family: 'Prompt', sans-serif;
+      background-color: var(--body-bg);
+      transition: background-color 0.3s, color 0.3s;
+    }
+    .emp-card {
+      background-color: var(--card-bg);
+      border-radius: 16px;
+      border: 1px solid rgba(128,128,128,0.15);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .emp-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 10px 20px rgba(0,0,0,0.08);
+    }
+    .progress {
+      height: 12px;
+      border-radius: 10px;
+      background-color: rgba(128,128,128,0.15);
+      overflow: hidden;
+    }
+    .progress-bar {
+      transition: width 0.5s ease, background-color 0.3s ease;
+    }
+    .btn-quick {
+      width: 24px;
+      height: 24px;
+      padding: 0;
+      line-height: 1;
+      font-size: 14px;
+      border-radius: 6px;
+    }
+    .doughnut-wrapper {
+      position: relative;
+      width: 110px;
+      height: 110px;
+      margin: 0 auto;
+    }
+    .doughnut-center {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      pointer-events: none;
+    }
+    .note-box {
+      font-size: 0.82rem;
+      background: rgba(128,128,128,0.08);
+      border-radius: 8px;
+      padding: 6px 10px;
+      min-height: 36px;
+    }
+    .loading-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      backdrop-filter: blur(2px);
+    }
+  </style>
+</head>
+<body>
+
+<div id="loader" class="loading-overlay">
+  <div class="text-center">
+    <div class="spinner-border text-light mb-2" role="status"></div>
+    <div id="loaderText">กำลังโหลดข้อมูลจาก Google Sheets...</div>
+  </div>
+</div>
+
+<nav class="navbar navbar-expand-lg border-bottom sticky-top" style="background-color: var(--card-bg);">
+  <div class="container-fluid px-4">
+    <span class="navbar-brand fw-bold d-flex align-items-center gap-2">
+      <i class="bi bi-battery-charging text-primary fs-4"></i>
+      <span data-i18n="appTitle">ระบบติดตามวันลาพนักงาน</span>
+    </span>
+
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+      <div class="btn-group" role="group">
+        <button type="button" class="btn btn-primary btn-sm active" id="btnTabCards" onclick="switchTab('cards')">
+          <i class="bi bi-grid-fill"></i> <span data-i18n="tabCards">รายบุคคล</span>
+        </button>
+        <button type="button" class="btn btn-outline-primary btn-sm" id="btnTabOverview" onclick="switchTab('overview')">
+          <i class="bi bi-bar-chart-fill"></i> <span data-i18n="tabOverview">ภาพรวมเปรียบเทียบ</span>
+        </button>
+      </div>
+
+      <button class="btn btn-success btn-sm" onclick="openAddModal()">
+        <i class="bi bi-person-plus-fill"></i> <span data-i18n="btnAdd">เพิ่มพนักงาน</span>
+      </button>
+      <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#settingsModal">
+        <i class="bi bi-sliders"></i> <span data-i18n="btnSettings">ตั้งค่าสี & โควต้า</span>
+      </button>
+
+      <button class="btn btn-outline-info btn-sm fw-bold" onclick="toggleLang()" id="btnLang">EN</button>
+      <button class="btn btn-outline-warning btn-sm" onclick="toggleTheme()" id="btnTheme">
+        <i class="bi bi-moon-stars-fill"></i>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<div class="container-fluid px-4 py-4">
+  <div id="filterBar" class="row g-2 mb-4 align-items-center">
+    <div class="col-md-4">
+      <div class="input-group input-group-sm">
+        <span class="input-group-text"><i class="bi bi-search"></i></span>
+        <input type="text" id="searchInput" class="form-control" placeholder="ค้นหาชื่อ หรือ รหัสพนักงาน..." onkeyup="renderCards()">
+      </div>
+    </div>
+    <div class="col-md-3">
+      <select id="sortSelect" class="form-select form-select-sm" onchange="renderCards()">
+        <option value="default" data-i18n="sortDefault">เรียงตามลำดับตาราง</option>
+        <option value="mostUsed" data-i18n="sortMost">ลาบ่อยสุด (ดัชนีการลา % สูง -> ต่ำ)</option>
+        <option value="leastUsed" data-i18n="sortLeast">ลาน้อยสุด (ดัชนีการลา % ต่ำ -> สูง)</option>
+      </select>
+    </div>
+    <div class="col-md-5 text-md-end small text-muted">
+      <span class="me-2"><i class="bi bi-circle-fill" style="color:var(--color-low)"></i> <span data-i18n="legendLow">&lt; 50% ปกติ</span></span>
+      <span class="me-2"><i class="bi bi-circle-fill" style="color:var(--color-mid)"></i> <span data-i18n="legendMid">50-79% เฝ้าระวัง</span></span>
+      <span><i class="bi bi-circle-fill" style="color:var(--color-high)"></i> <span data-i18n="legendHigh">&ge; 80% ใกล้หมด/เกิน</span></span>
+    </div>
+  </div>
+
+  <div id="viewCards" class="row g-4"></div>
+
+  <div id="viewOverview" class="d-none">
+    <div class="row g-3 mb-4" id="kpiSection"></div>
+    <div class="row g-4">
+      <div class="col-lg-8">
+        <div class="emp-card p-4 h-100">
+          <h5 class="fw-bold mb-1" data-i18n="chartRankTitle">อันดับดัชนีการลาเฉลี่ยรายบุคคล (%)</h5>
+          <p class="text-muted small mb-3" data-i18n="chartRankSub">คำนวณจากค่าเฉลี่ยเปอร์เซ็นต์การใช้วันลาทุกประเภท เพื่อความยุติธรรม</p>
+          <div style="height: 380px;">
+            <canvas id="overviewBarChart"></canvas>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-4">
+        <div class="emp-card p-4 h-100">
+          <h5 class="fw-bold mb-1" data-i18n="chartTypeTitle">สัดส่วนประเภทการลาทั้งองค์กร</h5>
+          <p class="text-muted small mb-3" data-i18n="chartTypeSub">เปรียบเทียบค่าเฉลี่ย % การใช้โควต้าแยกตามประเภท</p>
+          <div style="height: 320px;" class="d-flex align-items-center justify-content-center">
+            <canvas id="overviewPieChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal แก้ไข -->
+<div class="modal fade" id="editModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold" data-i18n="modalEditTitle">แก้ไขข้อมูลพนักงาน</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="editStartRow">
+        <div class="row g-2 mb-3">
+          <div class="col-5">
+            <label class="form-label small fw-bold" data-i18n="lblEmpId">รหัสพนักงาน</label>
+            <input type="text" id="editEmpId" class="form-control form-control-sm">
+          </div>
+          <div class="col-7">
+            <label class="form-label small fw-bold" data-i18n="lblName">ชื่อพนักงาน</label>
+            <input type="text" id="editName" class="form-control form-control-sm">
+          </div>
+        </div>
+        <table class="table table-sm table-bordered text-center align-middle">
+          <thead class="table-light">
+            <tr>
+              <th data-i18n="colType">ประเภทการลา</th>
+              <th data-i18n="colQuota">โควต้า (วัน)</th>
+              <th data-i18n="colUsed">ลาจริง (วัน)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="text-start fw-medium" data-i18n="typeAnnual">ลาพักร้อน</td>
+              <td><input type="number" step="0.5" id="editAnnualQ" class="form-control form-control-sm text-center"></td>
+              <td><input type="number" step="0.5" id="editAnnualU" class="form-control form-control-sm text-center"></td>
+            </tr>
+            <tr>
+              <td class="text-start fw-medium" data-i18n="typePersonal">ลากิจ</td>
+              <td><input type="number" step="0.5" id="editPersonalQ" class="form-control form-control-sm text-center"></td>
+              <td><input type="number" step="0.5" id="editPersonalU" class="form-control form-control-sm text-center"></td>
+            </tr>
+            <tr>
+              <td class="text-start fw-medium" data-i18n="typeSick">ลาป่วย</td>
+              <td><input type="number" step="0.5" id="editSickQ" class="form-control form-control-sm text-center"></td>
+              <td><input type="number" step="0.5" id="editSickU" class="form-control form-control-sm text-center"></td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="mb-2">
+          <label class="form-label small fw-bold" data-i18n="lblNote">โน้ตเพิ่มเติม</label>
+          <textarea id="editNote" class="form-control form-control-sm" rows="2"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer justify-content-between">
+        <button type="button" class="btn btn-outline-danger btn-sm" onclick="confirmDelete()">
+          <i class="bi bi-trash"></i> <span data-i18n="btnDelete">ลบพนักงาน</span>
+        </button>
+        <div>
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal" data-i18n="btnCancel">ยกเลิก</button>
+          <button type="button" class="btn btn-primary btn-sm" onclick="saveEdit()" data-i18n="btnSave">บันทึกข้อมูล</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal เพิ่มพนักงาน -->
+<div class="modal fade" id="addModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold" data-i18n="modalAddTitle">เพิ่มพนักงานใหม่</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-2 mb-3">
+          <div class="col-5">
+            <label class="form-label small fw-bold" data-i18n="lblEmpId">รหัสพนักงาน</label>
+            <input type="text" id="addEmpId" class="form-control form-control-sm" placeholder="เช่น C26999">
+          </div>
+          <div class="col-7">
+            <label class="form-label small fw-bold" data-i18n="lblName">ชื่อพนักงาน</label>
+            <input type="text" id="addName" class="form-control form-control-sm" placeholder="ชื่อพนักงาน">
+          </div>
+        </div>
+        <table class="table table-sm table-bordered text-center align-middle">
+          <thead class="table-light">
+            <tr>
+              <th data-i18n="colType">ประเภทการลา</th>
+              <th data-i18n="colQuota">โควต้า (วัน)</th>
+              <th data-i18n="colUsed">ลาจริงเริ่มต้น</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="text-start" data-i18n="typeAnnual">ลาพักร้อน</td>
+              <td><input type="number" id="addAnnualQ" class="form-control form-control-sm text-center" value="6"></td>
+              <td><input type="number" id="addAnnualU" class="form-control form-control-sm text-center" value="0"></td>
+            </tr>
+            <tr>
+              <td class="text-start" data-i18n="typePersonal">ลากิจ</td>
+              <td><input type="number" id="addPersonalQ" class="form-control form-control-sm text-center" value="3"></td>
+              <td><input type="number" id="addPersonalU" class="form-control form-control-sm text-center" value="0"></td>
+            </tr>
+            <tr>
+              <td class="text-start" data-i18n="typeSick">ลาป่วย</td>
+              <td><input type="number" id="addSickQ" class="form-control form-control-sm text-center" value="30"></td>
+              <td><input type="number" id="addSickU" class="form-control form-control-sm text-center" value="0"></td>
+            </tr>
+          </tbody>
+        </table>
+        <div>
+          <label class="form-label small fw-bold" data-i18n="lblNote">โน้ตเพิ่มเติม</label>
+          <input type="text" id="addNote" class="form-control form-control-sm">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal" data-i18n="btnCancel">ยกเลิก</button>
+        <button type="button" class="btn btn-success btn-sm" onclick="saveNewEmployee()" data-i18n="btnAddConfirm">เพิ่มข้อมูล</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal ตั้งค่า -->
+<div class="modal fade" id="settingsModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold" data-i18n="modalSetTitle">ตั้งค่าสีหลอดพลังงาน & โควต้ามาตรฐาน</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <h6 class="fw-bold small text-primary mb-2" data-i18n="secColor">1. ปรับแต่งสีหลอดพลังงานตามระดับ %</h6>
+        <div class="row g-2 mb-4">
+          <div class="col-4">
+            <label class="form-label small" data-i18n="colLow">&lt; 50% (ปกติ)</label>
+            <input type="color" id="pickColorLow" class="form-control form-control-color w-100" value="#10b981" onchange="applyCustomColors()">
+          </div>
+          <div class="col-4">
+            <label class="form-label small" data-i18n="colMid">50-79% (เตือน)</label>
+            <input type="color" id="pickColorMid" class="form-control form-control-color w-100" value="#f59e0b" onchange="applyCustomColors()">
+          </div>
+          <div class="col-4">
+            <label class="form-label small" data-i18n="colHigh">&ge; 80% (วิกฤต)</label>
+            <input type="color" id="pickColorHigh" class="form-control form-control-color w-100" value="#ef4444" onchange="applyCustomColors()">
+          </div>
+        </div>
+        <hr>
+        <h6 class="fw-bold small text-danger mb-1" data-i18n="secBulkQuota">2. อัปเดตโควต้าทุกคนพร้อมกัน (เขียนทับทั้งตาราง)</h6>
+        <p class="text-muted small mb-2" data-i18n="secBulkSub">เว้นว่างไว้หากไม่ต้องการเปลี่ยนโควต้าประเภทนั้น</p>
+        <div class="row g-2">
+          <div class="col-4">
+            <label class="form-label small" data-i18n="typeAnnual">ลาพักร้อน</label>
+            <input type="number" id="bulkAnnual" class="form-control form-control-sm" placeholder="เช่น 6">
+          </div>
+          <div class="col-4">
+            <label class="form-label small" data-i18n="typePersonal">ลากิจ</label>
+            <input type="number" id="bulkPersonal" class="form-control form-control-sm" placeholder="เช่น 3">
+          </div>
+          <div class="col-4">
+            <label class="form-label small" data-i18n="typeSick">ลาป่วย</label>
+            <input type="number" id="bulkSick" class="form-control form-control-sm" placeholder="เช่น 30">
+          </div>
+        </div>
+        <button class="btn btn-warning btn-sm w-100 mt-3 fw-bold" onclick="applyBulkQuota()" data-i18n="btnApplyBulk">
+          อัปเดตโควต้าทุกคนในฐานข้อมูล
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  // 🟢 ใส่ URL เว็บแอป Google Apps Script ของคุณที่นี่
+  const GAS_URL = 'https://script.google.com/macros/s/AKfycbx7uN2U7o7TBUXagc0yGDDqkj2SKbDY2t3J_-1jhYcCcYYCX7fUNn_j1MOZ_erUJg5QYw/exec';
+
+  let employeesData = [];
+  let currentLang = 'th';
+  let cardCharts = {};
+  let overviewBar = null;
+  let overviewPie = null;
+
+  const i18n = {
+    th: {
+      appTitle: 'ระบบติดตามวันลาพนักงาน',
+      tabCards: 'รายบุคคล',
+      tabOverview: 'ภาพรวมเปรียบเทียบ',
+      btnAdd: 'เพิ่มพนักงาน',
+      btnSettings: 'ตั้งค่าสี & โควต้า',
+      sortDefault: 'เรียงตามลำดับตาราง',
+      sortMost: 'ลาบ่อยสุด (ดัชนีการลา % สูง -> ต่ำ)',
+      sortLeast: 'ลาน้อยสุด (ดัชนีการลา % ต่ำ -> สูง)',
+      legendLow: '< 50% ปกติ',
+      legendMid: '50-79% เฝ้าระวัง',
+      legendHigh: '≥ 80% ใกล้หมด/เกิน',
+      typeAnnual: 'ลาพักร้อน',
+      typePersonal: 'ลากิจ',
+      typeSick: 'ลาป่วย',
+      usedTotal: 'ลารวม',
+      days: 'วัน',
+      scoreLabel: 'ดัชนีการลา',
+      noNote: 'ไม่มีโน้ต...',
+      chartRankTitle: 'อันดับดัชนีการลาเฉลี่ยรายบุคคล (%)',
+      chartRankSub: 'คำนวณจากค่าเฉลี่ยเปอร์เซ็นต์การใช้วันลาทุกประเภท เพื่อความยุติธรรม',
+      chartTypeTitle: 'สัดส่วนประเภทการลาทั้งองค์กร',
+      chartTypeSub: 'เปรียบเทียบค่าเฉลี่ย % การใช้โควต้าแยกตามประเภท',
+      kpiTotalEmp: 'จำนวนพนักงานทั้งหมด',
+      kpiTopLeaver: 'คนที่ดัชนีการลาสูงสุด',
+      kpiAvgLeave: 'ดัชนีการลาเฉลี่ยทีม',
+      kpiOverQuota: 'คนที่ใช้เกินโควต้า',
+      modalEditTitle: 'แก้ไขข้อมูลพนักงาน',
+      modalAddTitle: 'เพิ่มพนักงานใหม่',
+      modalSetTitle: 'ตั้งค่าสีหลอดพลังงาน & โควต้ามาตรฐาน',
+      lblEmpId: 'รหัสพนักงาน',
+      lblName: 'ชื่อพนักงาน',
+      colType: 'ประเภทการลา',
+      colQuota: 'โควต้า (วัน)',
+      colUsed: 'ลาจริง (วัน)',
+      lblNote: 'โน้ตเพิ่มเติม',
+      btnDelete: 'ลบพนักงาน',
+      btnCancel: 'ยกเลิก',
+      btnSave: 'บันทึกข้อมูล',
+      btnAddConfirm: 'เพิ่มข้อมูล',
+      secColor: '1. ปรับแต่งสีหลอดพลังงานตามระดับ %',
+      colLow: '< 50% (ปกติ)',
+      colMid: '50-79% (เตือน)',
+      colHigh: '≥ 80% (วิกฤต)',
+      secBulkQuota: '2. อัปเดตโควต้าทุกคนพร้อมกัน (เขียนทับทั้งตาราง)',
+      secBulkSub: 'เว้นว่างไว้หากไม่ต้องการเปลี่ยนโควต้าประเภทนั้น',
+      btnApplyBulk: 'อัปเดตโควต้าทุกคนในฐานข้อมูล'
+    },
+    en: {
+      appTitle: 'Employee Leave Tracker',
+      tabCards: 'Individual Cards',
+      tabOverview: 'Team Overview',
+      btnAdd: 'Add Employee',
+      btnSettings: 'Colors & Quotas',
+      sortDefault: 'Default Sheet Order',
+      sortMost: 'Most Frequent (Leave Index High -> Low)',
+      sortLeast: 'Least Frequent (Leave Index Low -> High)',
+      legendLow: '< 50% Normal',
+      legendMid: '50-79% Warning',
+      legendHigh: '≥ 80% Critical/Over',
+      typeAnnual: 'Annual Leave',
+      typePersonal: 'Personal Leave',
+      typeSick: 'Sick Leave',
+      usedTotal: 'Total Used',
+      days: 'days',
+      scoreLabel: 'Leave Index',
+      noNote: 'No notes...',
+      chartRankTitle: 'Individual Average Leave Index Ranking (%)',
+      chartRankSub: 'Calculated from average percentage across leave types for fairness',
+      chartTypeTitle: 'Organization Leave Breakdown',
+      chartTypeSub: 'Comparison of average quota usage % by leave category',
+      kpiTotalEmp: 'Total Employees',
+      kpiTopLeaver: 'Highest Leave Index',
+      kpiAvgLeave: 'Team Avg. Index',
+      kpiOverQuota: 'Over-Quota Cases',
+      modalEditTitle: 'Edit Employee Record',
+      modalAddTitle: 'Add New Employee',
+      modalSetTitle: 'Bar Colors & Bulk Quota Settings',
+      lblEmpId: 'Employee ID',
+      lblName: 'Employee Name',
+      colType: 'Leave Type',
+      colQuota: 'Quota (Days)',
+      colUsed: 'Used (Days)',
+      lblNote: 'Quick Note',
+      btnDelete: 'Delete',
+      btnCancel: 'Cancel',
+      btnSave: 'Save Changes',
+      btnAddConfirm: 'Add Employee',
+      secColor: '1. Customize Energy Bar Threshold Colors',
+      colLow: '< 50% (Normal)',
+      colMid: '50-79% (Warning)',
+      colHigh: '≥ 80% (Critical)',
+      secBulkQuota: '2. Bulk Update Quotas for All Employees',
+      secBulkSub: 'Leave blank to keep existing quota for that type',
+      btnApplyBulk: 'Apply Quota to Everyone'
+    }
+  };
+
+  window.onload = () => {
+    loadColorsFromStorage();
+    fetchData();
+  };
+
+  function showLoader(show, text = 'กำลังประมวลผล...') {
+    document.getElementById('loaderText').innerText = text;
+    document.getElementById('loader').style.display = show ? 'flex' : 'none';
+  }
+
+  // เปลี่ยนมาใช้ fetch API ดึงข้อมูลจาก GAS
+  async function fetchData() {
+    showLoader(true, currentLang === 'th' ? 'กำลังดึงข้อมูลจาก Google Sheets...' : 'Loading...');
+    try {
+      const res = await fetch(`${GAS_URL}?action=getData`);
+      employeesData = await res.json();
+      renderCards();
+      renderOverview();
+    } catch (err) {
+      alert('Error fetching data: ' + err.message);
+    } finally {
+      showLoader(false);
+    }
+  }
+
+  // เปลี่ยนมาใช้ fetch API ส่งข้อมูลเข้า GAS
+  async function callGasApi(action, payload) {
+    showLoader(true, currentLang === 'th' ? 'กำลังบันทึกข้อมูล...' : 'Saving...');
+    try {
+      const res = await fetch(GAS_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action, payload })
+      });
+      const data = await res.json();
+      employeesData = data;
+      renderCards();
+      renderOverview();
+    } catch (err) {
+      alert('Error saving data: ' + err.message);
+    } finally {
+      showLoader(false);
+    }
+  }
+
+  function getBarColor(pct) {
+    const cLow = getComputedStyle(document.documentElement).getPropertyValue('--color-low').trim();
+    const cMid = getComputedStyle(document.documentElement).getPropertyValue('--color-mid').trim();
+    const cHigh = getComputedStyle(document.documentElement).getPropertyValue('--color-high').trim();
+    if (pct >= 80) return cHigh;
+    if (pct >= 50) return cMid;
+    return cLow;
+  }
+
+  function calcFairStats(emp) {
+    const types = ['annual', 'personal', 'sick'];
+    let sumPct = 0;
+    let activeTypes = 0;
+    const pctMap = {};
+
+    types.forEach(k => {
+      const q = emp.leaves[k]?.quota || 0;
+      const u = emp.leaves[k]?.used || 0;
+      if (q > 0) {
+        const pct = (u / q) * 100;
+        pctMap[k] = pct;
+        sumPct += pct;
+        activeTypes++;
+      } else {
+        pctMap[k] = u > 0 ? 100 : 0;
+      }
+    });
+
+    const avgPct = activeTypes > 0 ? Math.round(sumPct / activeTypes) : 0;
+    return {
+      pctMap,
+      avgPct,
+      totalUsed: (emp.leaves.annual?.used || 0) + (emp.leaves.personal?.used || 0) + (emp.leaves.sick?.used || 0),
+      totalQuota: (emp.leaves.annual?.quota || 0) + (emp.leaves.personal?.quota || 0) + (emp.leaves.sick?.quota || 0)
+    };
+  }
+
+  function createBarHTML(empIndex, typeKey, label, leaveObj) {
+    const q = leaveObj ? leaveObj.quota : 0;
+    const u = leaveObj ? leaveObj.used : 0;
+    const pct = q > 0 ? Math.round((u / q) * 100) : (u > 0 ? 100 : 0);
+    const visualPct = Math.min(pct, 100);
+    const color = getBarColor(pct);
+    const overBadge = u > q ? `<span class="badge bg-danger ms-1">เกิน ${u - q}</span>` : '';
+
+    return `
+      <div class="mb-2">
+        <div class="d-flex justify-content-between align-items-center small mb-1">
+          <span class="fw-medium">${label} ${overBadge}</span>
+          <div class="d-flex align-items-center gap-1">
+            <span class="fw-bold me-1">${u}/${q} <span class="text-muted fw-normal">(${pct}%)</span></span>
+            <button class="btn btn-outline-secondary btn-quick" onclick="quickAdjust(${empIndex}, '${typeKey}', -1)" title="-1">-</button>
+            <button class="btn btn-outline-primary btn-quick" onclick="quickAdjust(${empIndex}, '${typeKey}', 1)" title="+1">+</button>
+          </div>
+        </div>
+        <div class="progress">
+          <div class="progress-bar" role="progressbar" style="width: ${visualPct}%; background-color: ${color};"></div>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderCards() {
+    const container = document.getElementById('viewCards');
+    const keyword = document.getElementById('searchInput').value.toLowerCase();
+    const sortBy = document.getElementById('sortSelect').value;
+    const t = i18n[currentLang];
+
+    Object.values(cardCharts).forEach(c => c.destroy());
+    cardCharts = {};
+
+    let list = employeesData.map((emp, idx) => ({
+      ...emp,
+      origIndex: idx,
+      stats: calcFairStats(emp)
+    }));
+
+    if (keyword) {
+      list = list.filter(e => e.name.toLowerCase().includes(keyword) || e.empId.toLowerCase().includes(keyword));
+    }
+
+    if (sortBy === 'mostUsed') list.sort((a, b) => b.stats.avgPct - a.stats.avgPct);
+    else if (sortBy === 'leastUsed') list.sort((a, b) => a.stats.avgPct - b.stats.avgPct);
+
+    container.innerHTML = list.map(emp => {
+      const { avgPct, totalUsed, totalQuota } = emp.stats;
+      const indexColor = getBarColor(avgPct);
+
+      return `
+        <div class="col-xl-4 col-md-6">
+          <div class="emp-card p-3 h-100 d-flex flex-column justify-content-between">
+            <div>
+              <div class="d-flex justify-content-between align-items-start border-bottom pb-2 mb-3">
+                <div>
+                  <span class="badge bg-secondary-subtle text-secondary-emphasis mb-1">${emp.empId}</span>
+                  <h5 class="fw-bold mb-0">${emp.name}</h5>
+                </div>
+                <button class="btn btn-sm btn-light border" onclick="openEditModal(${emp.origIndex})" title="Edit">
+                  <i class="bi bi-pencil-square"></i>
+                </button>
+              </div>
+
+              <div class="row align-items-center g-2">
+                <div class="col-7">
+                  ${createBarHTML(emp.origIndex, 'annual', t.typeAnnual, emp.leaves.annual)}
+                  ${createBarHTML(emp.origIndex, 'personal', t.typePersonal, emp.leaves.personal)}
+                  ${createBarHTML(emp.origIndex, 'sick', t.typeSick, emp.leaves.sick)}
+                </div>
+                <div class="col-5 text-center">
+                  <div class="doughnut-wrapper">
+                    <canvas id="donut_${emp.origIndex}"></canvas>
+                    <div class="doughnut-center">
+                      <div class="fw-bold fs-5 lh-1" style="color:${indexColor}">${avgPct}%</div>
+                      <div class="text-muted mt-1" style="font-size:10px;">${totalUsed}/${totalQuota} ${t.days}</div>
+                    </div>
+                  </div>
+                  <div class="small fw-medium mt-1 text-muted">${t.scoreLabel}</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-3 pt-2 border-top">
+              <div class="note-box d-flex align-items-center justify-content-between gap-2">
+                <span class="text-truncate"><i class="bi bi-sticky text-warning me-1"></i> ${emp.note || `<span class="text-muted fst-italic">${t.noNote}</span>`}</span>
+                <button class="btn btn-link btn-sm p-0 text-decoration-none" onclick="quickNote(${emp.origIndex})"><i class="bi bi-chat-dots"></i></button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    list.forEach(emp => {
+      const ctx = document.getElementById(`donut_${emp.origIndex}`);
+      if (!ctx) return;
+      const { pctMap } = emp.stats;
+
+      const aScore = Math.min(pctMap.annual, 100);
+      const pScore = Math.min(pctMap.personal, 100);
+      const sScore = Math.min(pctMap.sick, 100);
+
+      let activeCount = 0;
+      if ((emp.leaves.annual?.quota || 0) > 0) activeCount++;
+      if ((emp.leaves.personal?.quota || 0) > 0) activeCount++;
+      if ((emp.leaves.sick?.quota || 0) > 0) activeCount++;
+
+      const maxRing = Math.max(activeCount * 100, 100);
+      const remScore = Math.max(maxRing - (aScore + pScore + sScore), 0);
+
+      cardCharts[emp.origIndex] = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: [`${t.typeAnnual} (%)`, `${t.typePersonal} (%)`, `${t.typeSick} (%)`, currentLang === 'th' ? 'โควต้าคงเหลือ' : 'Remaining'],
+          datasets: [{
+            data: [Math.round(pctMap.annual), Math.round(pctMap.personal), Math.round(pctMap.sick), Math.round(remScore)],
+            backgroundColor: ['#3b82f6', '#a855f7', '#ec4899', 'rgba(150,150,150,0.18)'],
+            borderWidth: 0
+          }]
+        },
+        options: {
+          cutout: '72%',
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: (item) => ` ${item.label}: ${item.raw}%` } }
+          }
+        }
+      });
+    });
+  }
+
+  function renderOverview() {
+    const t = i18n[currentLang];
+    let sumAnnualPct = 0, countAnnual = 0;
+    let sumPersonalPct = 0, countPersonal = 0;
+    let sumSickPct = 0, countSick = 0;
+    let overCount = 0;
+
+    const summaryList = employeesData.map(emp => {
+      const stats = calcFairStats(emp);
+      if ((emp.leaves.annual?.quota || 0) > 0) { sumAnnualPct += stats.pctMap.annual; countAnnual++; }
+      if ((emp.leaves.personal?.quota || 0) > 0) { sumPersonalPct += stats.pctMap.personal; countPersonal++; }
+      if ((emp.leaves.sick?.quota || 0) > 0) { sumSickPct += stats.pctMap.sick; countSick++; }
+
+      if (stats.pctMap.annual > 100 || stats.pctMap.personal > 100 || stats.pctMap.sick > 100) {
+        overCount++;
+      }
+      return { name: emp.name, avgPct: stats.avgPct, totalDays: stats.totalUsed };
+    }).sort((a, b) => b.avgPct - a.avgPct);
+
+    const teamAvgPct = summaryList.length ? Math.round(summaryList.reduce((acc, cur) => acc + cur.avgPct, 0) / summaryList.length) : 0;
+    const topPerson = summaryList.length ? `${summaryList[0].name} (${summaryList[0].avgPct}%)` : '-';
+
+    document.getElementById('kpiSection').innerHTML = `
+      <div class="col-md-3 col-6">
+        <div class="emp-card p-3">
+          <div class="text-muted small">${t.kpiTotalEmp}</div>
+          <div class="fs-4 fw-bold text-primary">${employeesData.length}</div>
+        </div>
+      </div>
+      <div class="col-md-3 col-6">
+        <div class="emp-card p-3">
+          <div class="text-muted small">${t.kpiTopLeaver}</div>
+          <div class="fs-5 fw-bold text-danger text-truncate">${topPerson}</div>
+        </div>
+      </div>
+      <div class="col-md-3 col-6">
+        <div class="emp-card p-3">
+          <div class="text-muted small">${t.kpiAvgLeave}</div>
+          <div class="fs-4 fw-bold text-warning">${teamAvgPct}%</div>
+        </div>
+      </div>
+      <div class="col-md-3 col-6">
+        <div class="emp-card p-3">
+          <div class="text-muted small">${t.kpiOverQuota}</div>
+          <div class="fs-4 fw-bold text-danger">${overCount}</div>
+        </div>
+      </div>
+    `;
+
+    if (overviewBar) overviewBar.destroy();
+    overviewBar = new Chart(document.getElementById('overviewBarChart'), {
+      type: 'bar',
+      data: {
+        labels: summaryList.map(x => x.name),
+        datasets: [{
+          label: currentLang === 'th' ? 'ดัชนีการลาเฉลี่ย (%)' : 'Avg. Leave Index (%)',
+          data: summaryList.map(x => x.avgPct),
+          backgroundColor: summaryList.map(x => getBarColor(x.avgPct)),
+          borderRadius: 8
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: (ctx) => { const item = summaryList[ctx.dataIndex]; return ` ${item.avgPct}% (${item.totalDays} ${t.days})`; } } }
+        },
+        scales: { y: { beginAtZero: true, max: 110, ticks: { callback: val => val + '%' } } }
+      }
+    });
+
+    const avgA = countAnnual ? Math.round(sumAnnualPct / countAnnual) : 0;
+    const avgP = countPersonal ? Math.round(sumPersonalPct / countPersonal) : 0;
+    const avgS = countSick ? Math.round(sumSickPct / countSick) : 0;
+
+    if (overviewPie) overviewPie.destroy();
+    overviewPie = new Chart(document.getElementById('overviewPieChart'), {
+      type: 'doughnut',
+      data: {
+        labels: [`${t.typeAnnual} (${avgA}%)`, `${t.typePersonal} (${avgP}%)`, `${t.typeSick} (${avgS}%)`],
+        datasets: [{
+          data: [avgA, avgP, avgS],
+          backgroundColor: ['#3b82f6', '#a855f7', '#ec4899'],
+          borderWidth: 2
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom' },
+          tooltip: { callbacks: { label: (ctx) => ` ${ctx.label}` } }
+        }
+      }
+    });
+  }
+
+  function quickAdjust(empIndex, typeKey, delta) {
+    const emp = JSON.parse(JSON.stringify(employeesData[empIndex]));
+    if (!emp.leaves[typeKey]) return;
+    const nextVal = emp.leaves[typeKey].used + delta;
+    if (nextVal < 0) return;
+    emp.leaves[typeKey].used = nextVal;
+    callGasApi('updateEmployee', emp);
+  }
+
+  function quickNote(empIndex) {
+    const emp = JSON.parse(JSON.stringify(employeesData[empIndex]));
+    const msg = prompt(currentLang === 'th' ? `โน้ตสำหรับ ${emp.name}:` : `Note for ${emp.name}:`, emp.note || '');
+    if (msg === null) return;
+    emp.note = msg;
+    callGasApi('updateEmployee', emp);
+  }
+
+  function openEditModal(idx) {
+    const emp = employeesData[idx];
+    document.getElementById('editStartRow').value = emp.startRow;
+    document.getElementById('editEmpId').value = emp.empId;
+    document.getElementById('editName').value = emp.name;
+    document.getElementById('editNote').value = emp.note || '';
+
+    document.getElementById('editAnnualQ').value = emp.leaves.annual?.quota ?? 0;
+    document.getElementById('editAnnualU').value = emp.leaves.annual?.used ?? 0;
+    document.getElementById('editPersonalQ').value = emp.leaves.personal?.quota ?? 0;
+    document.getElementById('editPersonalU').value = emp.leaves.personal?.used ?? 0;
+    document.getElementById('editSickQ').value = emp.leaves.sick?.quota ?? 0;
+    document.getElementById('editSickU').value = emp.leaves.sick?.used ?? 0;
+
+    new bootstrap.Modal(document.getElementById('editModal')).show();
+  }
+
+  function saveEdit() {
+    const startRow = Number(document.getElementById('editStartRow').value);
+    const emp = employeesData.find(e => e.startRow === startRow);
+    const payload = JSON.parse(JSON.stringify(emp));
+
+    payload.empId = document.getElementById('editEmpId').value.trim();
+    payload.name = document.getElementById('editName').value.trim();
+    payload.note = document.getElementById('editNote').value.trim();
+
+    payload.leaves.annual.quota = document.getElementById('editAnnualQ').value;
+    payload.leaves.annual.used = document.getElementById('editAnnualU').value;
+    payload.leaves.personal.quota = document.getElementById('editPersonalQ').value;
+    payload.leaves.personal.used = document.getElementById('editPersonalU').value;
+    payload.leaves.sick.quota = document.getElementById('editSickQ').value;
+    payload.leaves.sick.used = document.getElementById('editSickU').value;
+
+    bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
+    callGasApi('updateEmployee', payload);
+  }
+
+  function confirmDelete() {
+    if (!confirm(currentLang === 'th' ? 'ยืนยันการลบข้อมูลพนักงานคนนี้ทั้ง 3 แถว?' : 'Delete this employee?')) return;
+    const startRow = Number(document.getElementById('editStartRow').value);
+    bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
+    callGasApi('deleteEmployee', startRow);
+  }
+
+  function openAddModal() {
+    new bootstrap.Modal(document.getElementById('addModal')).show();
+  }
+
+  function saveNewEmployee() {
+    const payload = {
+      empId: document.getElementById('addEmpId').value.trim(),
+      name: document.getElementById('addName').value.trim(),
+      annualQuota: document.getElementById('addAnnualQ').value,
+      annualUsed: document.getElementById('addAnnualU').value,
+      personalQuota: document.getElementById('addPersonalQ').value,
+      personalUsed: document.getElementById('addPersonalU').value,
+      sickQuota: document.getElementById('addSickQ').value,
+      sickUsed: document.getElementById('addSickU').value,
+      note: document.getElementById('addNote').value.trim()
+    };
+    if (!payload.empId || !payload.name) return alert('กรุณากรอกรหัสและชื่อพนักงาน');
+
+    bootstrap.Modal.getInstance(document.getElementById('addModal')).hide();
+    callGasApi('addEmployee', payload);
+  }
+
+  function applyBulkQuota() {
+    const payload = {
+      annual: document.getElementById('bulkAnnual').value,
+      personal: document.getElementById('bulkPersonal').value,
+      sick: document.getElementById('bulkSick').value
+    };
+    bootstrap.Modal.getInstance(document.getElementById('settingsModal')).hide();
+    callGasApi('updateAllQuotas', payload);
+  }
+
+  function applyCustomColors() {
+    const low = document.getElementById('pickColorLow').value;
+    const mid = document.getElementById('pickColorMid').value;
+    const high = document.getElementById('pickColorHigh').value;
+    document.documentElement.style.setProperty('--color-low', low);
+    document.documentElement.style.setProperty('--color-mid', mid);
+    document.documentElement.style.setProperty('--color-high', high);
+    localStorage.setItem('leaveBarColors', JSON.stringify({ low, mid, high }));
+    renderCards();
+  }
+
+  function loadColorsFromStorage() {
+    const saved = localStorage.getItem('leaveBarColors');
+    if (saved) {
+      const { low, mid, high } = JSON.parse(saved);
+      document.documentElement.style.setProperty('--color-low', low);
+      document.documentElement.style.setProperty('--color-mid', mid);
+      document.documentElement.style.setProperty('--color-high', high);
+      document.getElementById('pickColorLow').value = low;
+      document.getElementById('pickColorMid').value = mid;
+      document.getElementById('pickColorHigh').value = high;
+    }
+  }
+
+  function switchTab(tab) {
+    const isCards = tab === 'cards';
+    document.getElementById('viewCards').classList.toggle('d-none', !isCards);
+    document.getElementById('filterBar').classList.toggle('d-none', !isCards);
+    document.getElementById('viewOverview').classList.toggle('d-none', isCards);
+
+    document.getElementById('btnTabCards').classList.toggle('btn-primary', isCards);
+    document.getElementById('btnTabCards').classList.toggle('btn-outline-primary', !isCards);
+    document.getElementById('btnTabOverview').classList.toggle('btn-primary', !isCards);
+    document.getElementById('btnTabOverview').classList.toggle('btn-outline-primary', isCards);
+    if (!isCards) renderOverview();
+  }
+
+  function toggleTheme() {
+    const html = document.documentElement;
+    const isDark = html.getAttribute('data-bs-theme') === 'dark';
+    html.setAttribute('data-bs-theme', isDark ? 'light' : 'dark');
+    document.getElementById('btnTheme').innerHTML = isDark
+      ? '<i class="bi bi-moon-stars-fill"></i>'
+      : '<i class="bi bi-sun-fill"></i>';
+  }
+
+  function toggleLang() {
+    currentLang = currentLang === 'th' ? 'en' : 'th';
+    document.getElementById('btnLang').innerText = currentLang === 'th' ? 'EN' : 'TH';
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      const key = el.getAttribute('data-i18n');
+      if (i18n[currentLang][key]) el.innerText = i18n[currentLang][key];
+    });
+    document.getElementById('searchInput').placeholder = currentLang === 'th'
+      ? 'ค้นหาชื่อ หรือ รหัสพนักงาน...'
+      : 'Search name or ID...';
+    renderCards();
+    renderOverview();
+  }
+</script>
+</body>
+</html>
