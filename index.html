@@ -12,7 +12,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <!-- SheetJS (XLSX Export) -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <!-- html2pdf.js (PDF Export) -->
+  <!-- html2pdf.js (PDF & Image Export) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
   <style>
@@ -53,11 +53,11 @@
       transition: width 0.5s ease, background-color 0.3s ease;
     }
     .btn-quick {
-      width: 20px;
-      height: 20px;
+      width: 22px;
+      height: 22px;
       padding: 0;
       line-height: 1;
-      font-size: 12px;
+      font-size: 11px;
       border-radius: 5px;
     }
     .doughnut-wrapper {
@@ -95,7 +95,6 @@
       color: white;
       backdrop-filter: blur(2px);
     }
-    /* Custom 5 columns on ultra-wide / XL screens */
     @media (min-width: 1400px) {
       .col-xxl-5th {
         flex: 0 0 auto;
@@ -130,13 +129,19 @@
         </button>
       </div>
 
+      <!-- ปุ่ม Export รวม: Excel และ PDF & Picture -->
       <div class="dropdown">
         <button class="btn btn-outline-success btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
           <i class="bi bi-file-earmark-arrow-down-fill"></i> Export
         </button>
         <ul class="dropdown-menu">
-          <li><a class="dropdown-item" href="#" onclick="exportExcel()"><i class="bi bi-file-earmark-excel text-success me-2"></i> Excel (XLSX)</a></li>
-          <li><a class="dropdown-item" href="#" onclick="previewPdf()"><i class="bi bi-file-earmark-pdf text-danger me-2"></i> พรีวิว & เซฟ PDF</a></li>
+          <li><a class="dropdown-item" href="#" onclick="exportExcel()"><i class="bi bi-file-earmark-excel text-success me-2"></i> ดาวน์โหลด Excel (XLSX)</a></li>
+          <li><hr class="dropdown-divider"></li>
+          <li><h6 class="dropdown-header text-muted small">PDF & Picture Reports</h6></li>
+          <li><a class="dropdown-item" href="#" onclick="previewReport('pdf', 'portrait')"><i class="bi bi-file-earmark-pdf text-danger me-2"></i> พรีวิว PDF (แนวตั้ง)</a></li>
+          <li><a class="dropdown-item" href="#" onclick="previewReport('pdf', 'landscape')"><i class="bi bi-file-earmark-pdf text-danger me-2"></i> พรีวิว PDF (แนวนอน)</a></li>
+          <li><a class="dropdown-item" href="#" onclick="previewReport('img', 'portrait')"><i class="bi bi-file-earmark-image text-primary me-2"></i> พรีวิวรูปภาพ (แนวตั้ง)</a></li>
+          <li><a class="dropdown-item" href="#" onclick="previewReport('img', 'landscape')"><i class="bi bi-file-earmark-image text-primary me-2"></i> พรีวิวรูปภาพ (แนวนอน)</a></li>
         </ul>
       </div>
 
@@ -177,7 +182,6 @@
     </div>
   </div>
 
-  <!-- Grid แสดง 4 การ์ดบนจอ XL (lg/xl) และ 5 การ์ดบนจอใหญ่ (xxl) -->
   <div id="viewCards" class="row g-3"></div>
 
   <div id="viewOverview" class="d-none">
@@ -205,27 +209,28 @@
   </div>
 </div>
 
-<!-- MODAL: พรีวิว PDF ก่อนเซฟ -->
-<div class="modal fade" id="pdfPreviewModal" tabindex="-1">
+<!-- MODAL: พรีวิว PDF และรูปภาพ -->
+<div class="modal fade" id="reportPreviewModal" tabindex="-1">
   <div class="modal-dialog modal-xl modal-dialog-scrollable">
     <div class="modal-content">
       <div class="modal-header bg-dark text-white">
-        <h5 class="modal-title fw-bold"><i class="bi bi-file-earmark-pdf-fill text-danger"></i> พรีวิวเอกสารรายงานวันลา (PDF Preview)</h5>
+        <h5 class="modal-title fw-bold" id="previewModalTitle"><i class="bi bi-file-earmark-text-fill text-info"></i> พรีวิวเอกสารรายงาน</h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
-      <div class="modal-body bg-secondary bg-opacity-15 p-4">
-        <div id="pdfContentArea" class="bg-white p-5 shadow-sm mx-auto" style="max-width: 800px; border-radius: 8px; color: #333;">
+      <div class="modal-body bg-secondary bg-opacity-15 p-4 text-center">
+        <!-- พื้นที่พรีวิว (จะปรับความกว้างตามแนวตั้ง/แนวนอนอัตโนมัติ) -->
+        <div id="reportContentArea" class="bg-white p-5 shadow-sm mx-auto text-start" style="max-width: 800px; border-radius: 8px; color: #333;">
           <div class="text-center border-bottom pb-3 mb-4">
             <h3 class="fw-bold text-primary mb-1">รายงานสรุปสถิติวันลาพนักงาน</h3>
-            <p class="text-muted mb-0">Employee Leave Summary Report - อัปเดตล่าสุด ณ วันที่ <span id="reportDate"></span></p>
+            <p class="text-muted mb-0">Employee Leave Summary Report - อัปเดตล่าสุด ณ วันที่ <span id="reportDate"></span> (<span id="reportOrientationLabel"></span>)</p>
           </div>
-          <div id="pdfSummaryTable"></div>
+          <div id="reportSummaryTable"></div>
         </div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">ยกเลิก</button>
-        <button type="button" class="btn btn-danger btn-sm px-4" onclick="downloadPdf()">
-          <i class="bi bi-download"></i> ยืนยันดาวน์โหลดเป็น PDF
+        <button type="button" class="btn btn-primary btn-sm px-4 fw-bold" id="btnConfirmDownload" onclick="confirmDownloadReport()">
+          <i class="bi bi-download"></i> ยืนยันดาวน์โหลด
         </button>
       </div>
     </div>
@@ -364,7 +369,7 @@
       </div>
       <div class="modal-body">
         <h6 class="fw-bold small text-primary mb-2" data-i18n="secColor">1. ปรับแต่งสีหลอดพลังงานตามระดับ %</h6>
-        <div class="row g-2 mb-4">
+        <div class="row g-2 mb-3">
           <div class="col-4">
             <label class="form-label small" data-i18n="colLow">&lt; 50% (ปกติ)</label>
             <input type="color" id="pickColorLow" class="form-control form-control-color w-100" value="#10b981" onchange="applyCustomColors()">
@@ -378,7 +383,15 @@
             <input type="color" id="pickColorHigh" class="form-control form-control-color w-100" value="#ef4444" onchange="applyCustomColors()">
           </div>
         </div>
+
         <hr>
+        <h6 class="fw-bold small text-warning mb-1">🎉 3. รีเซ็ตวันลาจริงเป็น 0 (ต้อนรับปีใหม่)</h6>
+        <p class="text-muted small mb-2">ล้างค่าวันลาที่ใช้ไปทั้งหมดของทุกคนให้กลับเป็น 0 ทันที (โควต้ายังอยู่เท่าเดิม)</p>
+        <button class="btn btn-outline-danger btn-sm w-100 fw-bold" onclick="resetNewYearLeave()">
+          <i class="bi bi-arrow-counterclockwise"></i> รีเซ็ตวันลาจริงทุกคนเป็น 0 (ปีใหม่)
+        </button>
+
+        <hr class="mt-3">
         <h6 class="fw-bold small text-danger mb-1" data-i18n="secBulkQuota">2. อัปเดตโควต้าทุกคนพร้อมกัน (เขียนทับทั้งตาราง)</h6>
         <p class="text-muted small mb-2" data-i18n="secBulkSub">เว้นว่างไว้หากไม่ต้องการเปลี่ยนโควต้าประเภทนั้น</p>
         <div class="row g-2">
@@ -412,6 +425,11 @@
   let cardCharts = {};
   let overviewBar = null;
   let overviewPie = null;
+  let clickTimers = {};
+
+  // ตัวแปรเก็บสถานะการ Export ปัจจุบัน
+  let currentExportType = 'pdf'; // 'pdf' หรือ 'img'
+  let currentOrientation = 'portrait'; // 'portrait' หรือ 'landscape'
 
   const i18n = {
     th: {
@@ -605,8 +623,8 @@
           <span class="fw-medium text-truncate">${label} ${overBadge}</span>
           <div class="d-flex align-items-center gap-1">
             <span class="fw-bold" style="font-size:11px;">${u}/${q}</span>
-            <button class="btn btn-outline-secondary btn-quick" onclick="quickAdjust(${empIndex}, '${typeKey}', -1)" title="-1">-</button>
-            <button class="btn btn-outline-primary btn-quick" onclick="quickAdjust(${empIndex}, '${typeKey}', 1)" title="+1">+</button>
+            <button class="btn btn-outline-secondary btn-quick" onclick="handleDoubleClick(${empIndex}, '${typeKey}', -1, this)" title="กด 2 ครั้งเพื่อลด">-</button>
+            <button class="btn btn-outline-primary btn-quick" onclick="handleDoubleClick(${empIndex}, '${typeKey}', 1, this)" title="กด 2 ครั้งเพื่อเพิ่ม">+</button>
           </div>
         </div>
         <div class="progress">
@@ -614,6 +632,27 @@
         </div>
       </div>
     `;
+  }
+
+  function handleDoubleClick(empIndex, typeKey, delta, btnElement) {
+    const key = `${empIndex}_${typeKey}_${delta}`;
+    if (!clickTimers[key]) {
+      clickTimers[key] = true;
+      btnElement.classList.add('btn-warning');
+      btnElement.classList.remove('btn-outline-secondary', 'btn-outline-primary');
+      setTimeout(() => {
+        btnElement.classList.remove('btn-warning');
+        if(delta > 0) btnElement.classList.add('btn-outline-primary');
+        else btnElement.classList.add('btn-outline-secondary');
+        delete clickTimers[key];
+      }, 400);
+    } else {
+      delete clickTimers[key];
+      btnElement.classList.remove('btn-warning');
+      if(delta > 0) btnElement.classList.add('btn-outline-primary');
+      else btnElement.classList.add('btn-outline-secondary');
+      quickAdjust(empIndex, typeKey, delta);
+    }
   }
 
   function renderCards() {
@@ -638,14 +677,13 @@
     if (sortBy === 'mostUsed') list.sort((a, b) => b.stats.avgPct - a.stats.avgPct);
     else if (sortBy === 'leastUsed') list.sort((a, b) => a.stats.avgPct - b.stats.avgPct);
 
-    // ปรับ Grid เป็น col-xxl-5th (5 การ์ด/แถว), col-xl-3 (4 การ์ด/แถว), col-lg-4 (3 การ์ด/แถว), col-sm-6 (2 การ์ด/แถว)
     container.innerHTML = list.map(emp => {
       const { avgPct, totalUsed, totalQuota } = emp.stats;
       const indexColor = getBarColor(avgPct);
 
       return `
         <div class="col-xxl-5th col-xl-3 col-lg-4 col-sm-6">
-          <div class="emp-card p-2.5 p-3 h-100 d-flex flex-column justify-content-between">
+          <div class="emp-card p-3 h-100 d-flex flex-column justify-content-between">
             <div>
               <div class="d-flex justify-content-between align-items-start border-bottom pb-2 mb-2">
                 <div class="text-truncate pe-1">
@@ -825,6 +863,17 @@
     });
   }
 
+  function resetNewYearLeave() {
+    if (!confirm(currentLang === 'th' ? '⚠️ ยืนยันการรีเซ็ตวันลาจริงของพนักงานทุกคนเป็น 0 สำหรับปีใหม่?' : 'Reset all employees leave usage to 0 for New Year?')) return;
+    employeesData.forEach(emp => {
+      ['annual', 'personal', 'sick'].forEach(type => {
+        if (emp.leaves[type]) { emp.leaves[type].used = 0; }
+      });
+    });
+    callGasApi('resetAllUsage', employeesData);
+    bootstrap.Modal.getInstance(document.getElementById('settingsModal')).hide();
+  }
+
   function exportExcel() {
     let rows = [];
     rows.push(["Employee Number", "Name", "Leave Type", "Quota", "Used", "Remaining", "Note"]);
@@ -833,39 +882,38 @@
       ['annual', 'personal', 'sick'].forEach(type => {
         const l = emp.leaves[type];
         if (l) {
-          rows.push([
-            emp.empId,
-            emp.name,
-            l.label,
-            l.quota,
-            l.used,
-            l.quota - l.used,
-            emp.note || ''
-          ]);
+          rows.push([ emp.empId, emp.name, l.label, l.quota, l.used, l.quota - l.used, emp.note || '' ]);
         }
       });
     });
 
     const ws = XLSX.utils.aoa_to_sheet(rows);
-    ws['!cols'] = [
-      { wch: 18 },
-      { wch: 22 },
-      { wch: 15 },
-      { wch: 12 },
-      { wch: 12 },
-      { wch: 14 },
-      { wch: 30 }
-    ];
-
+    ws['!cols'] = [ { wch: 18 }, { wch: 22 }, { wch: 15 }, { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 30 } ];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Leave Summary");
     XLSX.writeFile(wb, "Employee_Leave_Report.xlsx");
   }
 
-  function previewPdf() {
-    document.getElementById('reportDate').innerText = new Date().toLocaleDateString('th-TH', {
-      year: 'numeric', month: 'long', day: 'numeric'
-    });
+  // --- ฟังก์ชันพรีวิวเอกสาร (แยกตามประเภท PDF หรือ รูปภาพ และ แนวตั้ง หรือ แนวนอน) ---
+  function previewReport(type, orientation) {
+    currentExportType = type;
+    currentOrientation = orientation;
+
+    const isPdf = type === 'pdf';
+    const orientText = orientation === 'portrait' ? (currentLang === 'th' ? 'แนวตั้ง' : 'Portrait') : (currentLang === 'th' ? 'แนวนอน' : 'Landscape');
+    const typeText = isPdf ? 'PDF' : (currentLang === 'th' ? 'รูปภาพ' : 'Image');
+
+    document.getElementById('previewModalTitle').innerHTML = `<i class="bi bi-${isPdf ? 'file-earmark-pdf-fill text-danger' : 'file-earmark-image-fill text-primary'}"></i> พรีวิวรายงาน ${typeText} (${orientText})`;
+    document.getElementById('reportOrientationLabel').innerText = orientText;
+    document.getElementById('reportDate').innerText = new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
+
+    // ปรับขนาดพื้นที่พรีวิวตามแนวตั้งหรือแนวนอน
+    const area = document.getElementById('reportContentArea');
+    if (orientation === 'landscape') {
+      area.style.maxWidth = '1050px';
+    } else {
+      area.style.maxWidth = '800px';
+    }
 
     let html = `
       <table class="table table-bordered table-striped align-middle" style="font-size: 13px;">
@@ -884,8 +932,8 @@
     `;
 
     employeesData.forEach(emp => {
-      ['annual', 'personal', 'sick'].forEach(type => {
-        const l = emp.leaves[type];
+      ['annual', 'personal', 'sick'].forEach(typeKey => {
+        const l = emp.leaves[typeKey];
         if (l) {
           const remain = l.quota - l.used;
           html += `
@@ -904,23 +952,47 @@
     });
 
     html += `</tbody></table>`;
-    document.getElementById('pdfSummaryTable').innerHTML = html;
-    new bootstrap.Modal(document.getElementById('pdfPreviewModal')).show();
+    document.getElementById('reportSummaryTable').innerHTML = html;
+    new bootstrap.Modal(document.getElementById('reportPreviewModal')).show();
   }
 
-  function downloadPdf() {
-    const element = document.getElementById('pdfContentArea');
-    const opt = {
-      margin:       10,
-      filename:     'Employee_Leave_Report.pdf',
-      image:        { type: 'jpeg', quality: 0.98 },
-      html2canvas:  { scale: 2, useCORS: true },
-      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    };
+  // --- ฟังก์ชันยืนยันดาวน์โหลด (รองรับทั้ง PDF และ รูปภาพ ทั้งแนวตั้งและแนวนอน) ---
+  function confirmDownloadReport() {
+    const element = document.getElementById('reportContentArea');
+    const isLandscape = currentOrientation === 'landscape';
 
-    html2pdf().from(element).set(opt).save().then(() => {
-      bootstrap.Modal.getInstance(document.getElementById('pdfPreviewModal')).hide();
-    });
+    if (currentExportType === 'pdf') {
+      const opt = {
+        margin:       10,
+        filename:     `Employee_Leave_Report_${currentOrientation}.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: currentOrientation }
+      };
+      html2pdf().from(element).set(opt).save().then(() => {
+        bootstrap.Modal.getInstance(document.getElementById('reportPreviewModal')).hide();
+      });
+    } else {
+      // ดาวน์โหลดเป็นรูปภาพ (PNG)
+      const opt = {
+        margin:       10,
+        filename:     `Employee_Leave_Report_${currentOrientation}.png`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true, logging: true },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: currentOrientation }
+      };
+      // ใช้ html2pdf เพื่อแปลงเป็น canvas แล้วเซฟเป็นรูปภาพ PNG ทันที
+      html2pdf().from(element).set(opt).output('blob').then((blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Employee_Leave_Report_${currentOrientation}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        bootstrap.Modal.getInstance(document.getElementById('reportPreviewModal')).hide();
+      });
+    }
   }
 
   function quickAdjust(empIndex, typeKey, delta) {
