@@ -925,7 +925,7 @@
     const t = i18n[currentLang];
 
     let html = `
-      <table class="table align-middle" style="font-size: 13px; border-collapse: collapse; width: 100%;">
+      <table class="align-middle" style="font-size: 13px; border-collapse: collapse; width: 100%; border: 2px solid #212529;">
         <thead>
           <tr style="background-color: #212529; color: white; text-align: center;">
             <th style="border: 1px solid #444; padding: 8px;">${t.pdfThEmpId}</th>
@@ -947,36 +947,35 @@
         { key: 'sick', label: t.typeSick }
       ];
 
-      // สลับสีพื้นหลังต่อคน (แถวเว้นแถวของคน)
-      const bgColor = empIdx % 2 === 0 ? '#ffffff' : '#f8f9fa';
+      // สลับสีพื้นหลัง "ตามตัวบุคคล" (คนแรกขาว คนที่สองเทาอ่อน)
+      const bgColor = empIdx % 2 === 0 ? '#ffffff' : '#f1f3f5';
 
       types.forEach((item, tIdx) => {
         const l = emp.leaves[item.key] || { quota: 0, used: 0 };
         const remain = l.quota - l.used;
         
-        // กำหนดเส้นคั่น: ระหว่างประเภทลาคนเดียวกันใช้เส้นเทาบางๆ, บรรทัดสุดท้ายของคนใช้เส้นดำเข้ม
-        const borderBottomStyle = tIdx < 2 ? 'border-bottom: 1px solid #dee2e6;' : 'border-bottom: 2px solid #212529;';
+        // เส้นคั่นระหว่างประเภทลาคนเดียวกันใช้สีเทาบางๆ ส่วนบรรทัดสุดท้ายของคน ใช้เส้นดำหนา/เข้มล้อมกรอบ
+        const borderBottomStyle = tIdx < 2 ? 'border-bottom: 1px solid #ced4da;' : 'border-bottom: 2.5px solid #212529;';
 
         html += `<tr style="background-color: ${bgColor};">`;
 
-        // Merge cells สำหรับรหัส ชื่อ และ โน้ต ในแถวแรกของคนนั้นๆ
         if (tIdx === 0) {
           html += `
-            <td rowspan="3" style="border: 1px solid #dee2e6; ${borderBottomStyle} text-align: center; font-weight: bold; vertical-align: middle;">${emp.empId}</td>
-            <td rowspan="3" style="border: 1px solid #dee2e6; ${borderBottomStyle} vertical-align: middle;">${emp.name}</td>
+            <td rowspan="3" style="border-left: 2.5px solid #212529; border-right: 1px solid #ced4da; border-top: 1px solid #ced4da; ${borderBottomStyle} text-align: center; font-weight: bold; vertical-align: middle;">${emp.empId}</td>
+            <td rowspan="3" style="border-right: 1px solid #ced4da; border-top: 1px solid #ced4da; ${borderBottomStyle} vertical-align: middle; padding: 6px;">${emp.name}</td>
           `;
         }
 
         html += `
-          <td style="border: 1px solid #dee2e6; ${borderBottomStyle} padding: 6px;">${item.label}</td>
-          <td style="border: 1px solid #dee2e6; ${borderBottomStyle} text-align: center; padding: 6px;">${l.quota}</td>
-          <td style="border: 1px solid #dee2e6; ${borderBottomStyle} text-align: center; padding: 6px;">${l.used}</td>
-          <td style="border: 1px solid #dee2e6; ${borderBottomStyle} text-align: center; font-weight: bold; padding: 6px; color: ${remain < 0 ? '#ef4444' : '#10b981'};">${remain}</td>
+          <td style="border-right: 1px solid #ced4da; border-top: 1px solid #ced4da; ${borderBottomStyle} padding: 6px;">${item.label}</td>
+          <td style="border-right: 1px solid #ced4da; border-top: 1px solid #ced4da; ${borderBottomStyle} text-align: center; padding: 6px;">${l.quota}</td>
+          <td style="border-right: 1px solid #ced4da; border-top: 1px solid #ced4da; ${borderBottomStyle} text-align: center; padding: 6px;">${l.used}</td>
+          <td style="border-right: 1px solid #ced4da; border-top: 1px solid #ced4da; ${borderBottomStyle} text-align: center; font-weight: bold; padding: 6px; color: ${remain < 0 ? '#ef4444' : '#10b981'};">${remain}</td>
         `;
 
         if (tIdx === 0) {
           html += `
-            <td rowspan="3" style="border: 1px solid #dee2e6; ${borderBottomStyle} vertical-align: middle; padding: 6px;"><small>${emp.note || '-'}</small></td>
+            <td rowspan="3" style="border-right: 2.5px solid #212529; border-top: 1px solid #ced4da; ${borderBottomStyle} vertical-align: middle; padding: 6px;"><small>${emp.note || '-'}</small></td>
           `;
         }
 
