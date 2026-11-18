@@ -12,7 +12,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <!-- SheetJS (XLSX Export) -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <!-- html2pdf.js (PDF & Image Export) -->
+  <!-- html2pdf.js (PDF Export) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
   <style>
@@ -43,6 +43,15 @@
       transform: translateY(-3px);
       box-shadow: 0 8px 18px rgba(0,0,0,0.08);
     }
+    .progress {
+      height: 8px;
+      border-radius: 8px;
+      background-color: rgba(128,128,128,0.15);
+      overflow: hidden;
+    }
+    .progress-bar {
+      transition: width 0.5s ease, background-color 0.3s ease;
+    }
     .btn-quick {
       width: 22px;
       height: 22px;
@@ -50,6 +59,20 @@
       line-height: 1;
       font-size: 11px;
       border-radius: 5px;
+    }
+    .doughnut-wrapper {
+      position: relative;
+      width: 78px;
+      height: 78px;
+      margin: 0 auto;
+    }
+    .doughnut-center {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      pointer-events: none;
     }
     .note-box {
       font-size: 0.75rem;
@@ -106,7 +129,7 @@
         </button>
       </div>
 
-      <!-- เมนู Export -->
+      <!-- เมนู Export (ตัดเซฟรูปออก เหลือ Excel กับ PDF) -->
       <div class="dropdown">
         <button class="btn btn-outline-success btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
           <i class="bi bi-file-earmark-arrow-down-fill"></i> <span data-i18n="menuExport">Export</span>
@@ -115,7 +138,6 @@
           <li><a class="dropdown-item" href="#" onclick="exportExcel()"><i class="bi bi-file-earmark-excel text-success me-2"></i> <span data-i18n="exExcel">ดาวน์โหลด Excel (XLSX)</span></a></li>
           <li><hr class="dropdown-divider"></li>
           <li><a class="dropdown-item" href="#" onclick="previewPdf()"><i class="bi bi-file-earmark-pdf text-danger me-2"></i> <span data-i18n="exPdf">พรีวิวและเซฟ PDF (แนวตั้ง)</span></a></li>
-          <li><a class="dropdown-item" href="#" onclick="previewImageComparison()"><i class="bi bi-file-earmark-image text-primary me-2"></i> <span data-i18n="exImg">🖼️ เซฟรูปภาพหน้าจอ (เลือกแนวตั้ง/แนวนอน)</span></a></li>
         </ul>
       </div>
 
@@ -205,62 +227,6 @@
         <button type="button" class="btn btn-danger btn-sm px-4 fw-bold" onclick="downloadPdf()">
           <i class="bi bi-download"></i> ยืนยันดาวน์โหลด PDF
         </button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL: เปรียบเทียบและเลือกพรีวิวรูปภาพ (แนวตั้ง vs แนวนอน) -->
-<div class="modal fade" id="imageComparisonModal" tabindex="-1">
-  <div class="modal-dialog modal-xl modal-dialog-scrollable">
-    <div class="modal-content">
-      <div class="modal-header bg-dark text-white">
-        <h5 class="modal-title fw-bold"><i class="bi bi-file-earmark-image-fill text-primary"></i> เปรียบเทียบและเลือกรูปแบบรูปภาพก่อนบันทึก</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body bg-secondary bg-opacity-15 p-4">
-        <p class="text-center text-dark fw-bold mb-3" data-i18n="chooseOrientPrompt">กรุณาเลือกรูปแบบที่ต้องการดาวน์โหลด:</p>
-        
-        <div class="row g-4">
-          <!-- ฝั่งแนวตั้ง -->
-          <div class="col-md-6 text-center">
-            <div class="card p-3 shadow-sm border-2 h-100">
-              <h6 class="fw-bold text-primary mb-2">📱 แนวตั้ง (Portrait)</h6>
-              <div class="bg-white p-3 border rounded shadow-sm text-start overflow-hidden mx-auto" id="previewPortraitBox" style="max-height: 400px; zoom: 0.65;">
-                <!-- แทรกเนื้อหาจำลอง -->
-              </div>
-              <button class="btn btn-primary btn-sm w-100 mt-3 fw-bold" onclick="downloadImage('portrait')">
-                <i class="bi bi-download"></i> ดาวน์โหลดรูปภาพแนวตั้ง
-              </button>
-            </div>
-          </div>
-
-          <!-- ฝั่งแนวนอน -->
-          <div class="col-md-6 text-center">
-            <div class="card p-3 shadow-sm border-2 h-100">
-              <h6 class="fw-bold text-success mb-2">💻 แนวนอน (Landscape)</h6>
-              <div class="bg-white p-3 border rounded shadow-sm text-start overflow-hidden mx-auto" id="previewLandscapeBox" style="max-height: 400px; zoom: 0.55;">
-                <!-- แทรกเนื้อหาจำลอง -->
-              </div>
-              <button class="btn btn-success btn-sm w-100 mt-3 fw-bold" onclick="downloadImage('landscape')">
-                <i class="bi bi-download"></i> ดาวน์โหลดรูปภาพแนวนอน
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Hidden Container สำหรับแปลงเป็นไฟล์จริงตอนกดดาวน์โหลด -->
-        <div id="captureContainer" class="bg-white p-4 d-none" style="width: 900px; border-radius: 12px; color: #333;">
-          <div class="text-center border-bottom pb-3 mb-3">
-            <h4 class="fw-bold text-primary mb-1" id="captureTitleText">รายงานสรุปวันลาพนักงาน</h4>
-            <p class="text-muted mb-0">อัปเดตข้อมูลล่าสุด ณ วันที่ <span id="captureDate"></span></p>
-          </div>
-          <div id="captureBodyContent"></div>
-        </div>
-
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal" data-i18n="btnCancel">ปิด</button>
       </div>
     </div>
   </div>
@@ -451,6 +417,7 @@
 
   let employeesData = [];
   let currentLang = 'th';
+  let cardCharts = {};
   let clickTimers = {};
 
   const i18n = {
@@ -463,7 +430,6 @@
       menuExport: 'Export',
       exExcel: 'ดาวน์โหลด Excel (XLSX)',
       exPdf: 'พรีวิวและเซฟ PDF (แนวตั้ง)',
-      exImg: '🖼️ เซฟรูปภาพหน้าจอ (เลือกแนวตั้ง/แนวนอน)',
       sortDefault: 'เรียงตามลำดับตาราง',
       sortMost: 'ลาบ่อยสุด (ดัชนีการลา % สูง -> ต่ำ)',
       sortLeast: 'ลาน้อยสุด (ดัชนีการลา % ต่ำ -> สูง)',
@@ -506,8 +472,7 @@
       btnApplyBulk: 'อัปเดตโควต้าทุกคนในฐานข้อมูล',
       secResetTitle: '🎉 3. รีเซ็ตวันลาจริงเป็น 0 (ต้อนรับปีใหม่)',
       secResetSub: 'ล้างค่าวันลาที่ใช้ไปทั้งหมดของทุกคนให้กลับเป็น 0 ทันที (โควต้ายังอยู่เท่าเดิม)',
-      btnResetYear: 'รีเซ็ตวันลาจริงทุกคนเป็น 0 (ปีใหม่)',
-      chooseOrientPrompt: 'กรุณาเลือกรูปแบบที่ต้องการดาวน์โหลด:'
+      btnResetYear: 'รีเซ็ตวันลาจริงทุกคนเป็น 0 (ปีใหม่)'
     },
     en: {
       appTitle: 'Employee Leave Tracker',
@@ -518,7 +483,6 @@
       menuExport: 'Export',
       exExcel: 'Download Excel (XLSX)',
       exPdf: 'Preview & Save PDF (Portrait)',
-      exImg: '🖼️ Save Screenshot Image (Portrait/Landscape)',
       sortDefault: 'Default Sheet Order',
       sortMost: 'Most Frequent (Leave Index High -> Low)',
       sortLeast: 'Least Frequent (Leave Index Low -> High)',
@@ -561,8 +525,7 @@
       btnApplyBulk: 'Apply Quota to Everyone',
       secResetTitle: '🎉 3. Reset Leave Usage to 0 (New Year)',
       secResetSub: 'Immediately clear leave usage for all employees back to 0',
-      btnResetYear: 'Reset All Leave Usage to 0 (New Year)',
-      chooseOrientPrompt: 'Please choose the format you want to download:'
+      btnResetYear: 'Reset All Leave Usage to 0 (New Year)'
     }
   };
 
@@ -648,15 +611,23 @@
   function createBarHTML(empIndex, typeKey, label, leaveObj) {
     const q = leaveObj ? leaveObj.quota : 0;
     const u = leaveObj ? leaveObj.used : 0;
+    const pct = q > 0 ? Math.round((u / q) * 100) : (u > 0 ? 100 : 0);
+    const visualPct = Math.min(pct, 100);
+    const color = getBarColor(pct);
     const overBadge = u > q ? `<span class="badge bg-danger p-1" style="font-size:9px;">+${u - q}</span>` : '';
 
     return `
-      <div class="mb-1 d-flex justify-content-between align-items-center compact-text border-bottom pb-1">
-        <span class="fw-medium text-truncate">${label} ${overBadge}</span>
-        <div class="d-flex align-items-center gap-1">
-          <span class="fw-bold" style="font-size:11px;">${u}/${q}</span>
-          <button class="btn btn-outline-secondary btn-quick" onclick="handleDoubleClick(${empIndex}, '${typeKey}', -1, this)" title="กด 2 ครั้งเพื่อลด">-</button>
-          <button class="btn btn-outline-primary btn-quick" onclick="handleDoubleClick(${empIndex}, '${typeKey}', 1, this)" title="กด 2 ครั้งเพื่อเพิ่ม">+</button>
+      <div class="mb-2">
+        <div class="d-flex justify-content-between align-items-center compact-text mb-1">
+          <span class="fw-medium text-truncate">${label} ${overBadge}</span>
+          <div class="d-flex align-items-center gap-1">
+            <span class="fw-bold" style="font-size:11px;">${u}/${q}</span>
+            <button class="btn btn-outline-secondary btn-quick" onclick="handleDoubleClick(${empIndex}, '${typeKey}', -1, this)" title="กด 2 ครั้งเพื่อลด">-</button>
+            <button class="btn btn-outline-primary btn-quick" onclick="handleDoubleClick(${empIndex}, '${typeKey}', 1, this)" title="กด 2 ครั้งเพื่อเพิ่ม">+</button>
+          </div>
+        </div>
+        <div class="progress">
+          <div class="progress-bar" role="progressbar" style="width: ${visualPct}%; background-color: ${color};"></div>
         </div>
       </div>
     `;
@@ -689,6 +660,9 @@
     const sortBy = document.getElementById('sortSelect').value;
     const t = i18n[currentLang];
 
+    Object.values(cardCharts).forEach(c => c.destroy());
+    cardCharts = {};
+
     let list = employeesData.map((emp, idx) => ({
       ...emp,
       origIndex: idx,
@@ -703,7 +677,7 @@
     else if (sortBy === 'leastUsed') list.sort((a, b) => a.stats.avgPct - b.stats.avgPct);
 
     container.innerHTML = list.map(emp => {
-      const { avgPct } = emp.stats;
+      const { avgPct, totalUsed, totalQuota } = emp.stats;
       const indexColor = getBarColor(avgPct);
 
       return `
@@ -715,18 +689,27 @@
                   <span class="badge bg-secondary-subtle text-secondary-emphasis" style="font-size:10px;">${emp.empId}</span>
                   <h6 class="fw-bold mb-0 mt-1 text-truncate" title="${emp.name}">${emp.name}</h6>
                 </div>
-                <div class="d-flex align-items-center gap-1">
-                  <span class="badge" style="background-color: ${indexColor}; font-size:10px;">${t.scoreLabel}: ${avgPct}%</span>
-                  <button class="btn btn-sm btn-light border py-0 px-1" onclick="openEditModal(${emp.origIndex})" title="Edit">
-                    <i class="bi bi-pencil-square" style="font-size:12px;"></i>
-                  </button>
-                </div>
+                <button class="btn btn-sm btn-light border py-0 px-1" onclick="openEditModal(${emp.origIndex})" title="Edit">
+                  <i class="bi bi-pencil-square" style="font-size:12px;"></i>
+                </button>
               </div>
 
-              <div class="px-1">
-                ${createBarHTML(emp.origIndex, 'annual', t.typeAnnual, emp.leaves.annual)}
-                ${createBarHTML(emp.origIndex, 'personal', t.typePersonal, emp.leaves.personal)}
-                ${createBarHTML(emp.origIndex, 'sick', t.typeSick, emp.leaves.sick)}
+              <div class="row align-items-center g-1">
+                <div class="col-7">
+                  ${createBarHTML(emp.origIndex, 'annual', t.typeAnnual, emp.leaves.annual)}
+                  ${createBarHTML(emp.origIndex, 'personal', t.typePersonal, emp.leaves.personal)}
+                  ${createBarHTML(emp.origIndex, 'sick', t.typeSick, emp.leaves.sick)}
+                </div>
+                <div class="col-5 text-center">
+                  <div class="doughnut-wrapper">
+                    <canvas id="donut_${emp.origIndex}"></canvas>
+                    <div class="doughnut-center">
+                      <div class="fw-bold lh-1" style="color:${indexColor}; font-size:14px;">${avgPct}%</div>
+                      <div class="text-muted mt-1" style="font-size:9px;">${totalUsed}/${totalQuota}${t.days}</div>
+                    </div>
+                  </div>
+                  <div class="mt-1 text-muted" style="font-size:10px;">${t.scoreLabel}</div>
+                </div>
               </div>
             </div>
 
@@ -740,6 +723,45 @@
         </div>
       `;
     }).join('');
+
+    list.forEach(emp => {
+      const ctx = document.getElementById(`donut_${emp.origIndex}`);
+      if (!ctx) return;
+      const { pctMap } = emp.stats;
+
+      const aScore = Math.min(pctMap.annual, 100);
+      const pScore = Math.min(pctMap.personal, 100);
+      const sScore = Math.min(pctMap.sick, 100);
+
+      let activeCount = 0;
+      if ((emp.leaves.annual?.quota || 0) > 0) activeCount++;
+      if ((emp.leaves.personal?.quota || 0) > 0) activeCount++;
+      if ((emp.leaves.sick?.quota || 0) > 0) activeCount++;
+
+      const maxRing = Math.max(activeCount * 100, 100);
+      const remScore = Math.max(maxRing - (aScore + pScore + sScore), 0);
+
+      cardCharts[emp.origIndex] = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: [`${t.typeAnnual} (%)`, `${t.typePersonal} (%)`, `${t.typeSick} (%)`, currentLang === 'th' ? 'คงเหลือ' : 'Left'],
+          datasets: [{
+            data: [Math.round(pctMap.annual), Math.round(pctMap.personal), Math.round(pctMap.sick), Math.round(remScore)],
+            backgroundColor: ['#3b82f6', '#a855f7', '#ec4899', 'rgba(150,150,150,0.18)'],
+            borderWidth: 0
+          }]
+        },
+        options: {
+          cutout: '72%',
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: (item) => ` ${item.label}: ${item.raw}%` } }
+          }
+        }
+      });
+    });
   }
 
   let overviewBar = null;
@@ -931,112 +953,6 @@
 
     html2pdf().from(element).set(opt).save().then(() => {
       bootstrap.Modal.getInstance(document.getElementById('pdfPreviewModal')).hide();
-    });
-  }
-
-  // --- ฟังก์ชันสร้างเนื้อหาจำลองเพื่อพรีวิวรูปภาพทั้งสองแนว ---
-  function generateImageSnapshotHTML() {
-    const isOverview = !document.getElementById('viewOverview').classList.contains('d-none');
-    const t = i18n[currentLang];
-    const modeLabel = isOverview ? (currentLang === 'th' ? '📊 มุมมองภาพรวมทีม (Team Overview)' : '📊 Team Overview Mode') : (currentLang === 'th' ? '👤 มุมมองรายบุคคล (Individual Cards)' : '👤 Individual Cards Mode');
-    
-    let html = `
-      <div class="mb-3 text-center">
-        <span class="badge bg-secondary px-3 py-1 rounded-pill">${modeLabel}</span>
-      </div>
-    `;
-
-    if (isOverview) {
-      html += `<div class="text-center p-3 border rounded bg-light text-muted">แสดงข้อมูลภาพรวมสถิติและกราฟวิเคราะห์องค์กร</div>`;
-    } else {
-      html += `<div class="row g-2">`;
-      employeesData.forEach(emp => {
-        const stats = calcFairStats(emp);
-        const indexColor = getBarColor(stats.avgPct);
-        html += `
-          <div class="col-4">
-            <div class="border rounded p-2 bg-white shadow-sm">
-              <div class="d-flex justify-content-between align-items-center mb-1">
-                <span class="badge bg-secondary text-white" style="font-size:9px;">${emp.empId}</span>
-                <span class="fw-bold" style="color: ${indexColor}; font-size:10px;">${stats.avgPct}%</span>
-              </div>
-              <div class="fw-bold text-truncate" style="font-size:12px;">${emp.name}</div>
-              <div class="text-secondary" style="font-size:10px;">${t.typeAnnual}: ${emp.leaves.annual?.used || 0}/${emp.leaves.annual?.quota || 0}</div>
-              <div class="text-secondary" style="font-size:10px;">${t.typePersonal}: ${emp.leaves.personal?.used || 0}/${emp.leaves.personal?.quota || 0}</div>
-              <div class="text-secondary" style="font-size:10px;">${t.typeSick}: ${emp.leaves.sick?.used || 0}/${emp.leaves.sick?.quota || 0}</div>
-            </div>
-          </div>
-        `;
-      });
-      html += `</div>`;
-    }
-    return html;
-  }
-
-  function previewImageComparison() {
-    const dateStr = new Date().toLocaleDateString(currentLang === 'th' ? 'th-TH' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-    document.getElementById('captureDate').innerText = dateStr;
-
-    const contentHtml = generateImageSnapshotHTML();
-    
-    // เติมลงในกล่องพรีวิวแนวตั้ง
-    document.getElementById('previewPortraitBox').innerHTML = `
-      <div style="width: 450px;">
-        <div class="text-center border-bottom pb-2 mb-2">
-          <h6 class="fw-bold text-primary mb-0">Employee Leave Snapshot</h6>
-          <small class="text-muted">${dateStr}</small>
-        </div>
-        ${contentHtml}
-      </div>
-    `;
-
-    // เติมลงในกล่องพรีวิวแนวนอน
-    document.getElementById('previewLandscapeBox').innerHTML = `
-      <div style="width: 750px;">
-        <div class="text-center border-bottom pb-2 mb-2">
-          <h6 class="fw-bold text-primary mb-0">Employee Leave Snapshot</h6>
-          <small class="text-muted">${dateStr}</small>
-        </div>
-        ${contentHtml}
-      </div>
-    `;
-
-    new bootstrap.Modal(document.getElementById('imageComparisonModal')).show();
-  }
-
-  function downloadImage(orientation) {
-    const dateStr = new Date().toLocaleDateString(currentLang === 'th' ? 'th-TH' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-    document.getElementById('captureDate').innerText = dateStr;
-    document.getElementById('captureBodyContent').innerHTML = generateImageSnapshotHTML();
-
-    const container = document.getElementById('captureContainer');
-    container.classList.remove('d-none');
-    
-    // ปรับความกว้างกล่องบันทึกตามแนวที่เลือก
-    if (orientation === 'landscape') {
-      container.style.width = '1100px';
-    } else {
-      container.style.width = '700px';
-    }
-
-    const filename = `Leave_Dashboard_${orientation}.png`;
-    const opt = {
-      margin: 10,
-      filename: filename,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true }
-    };
-
-    html2pdf().from(container).set(opt).output('blob').then((blob) => {
-      container.classList.add('d-none');
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      bootstrap.Modal.getInstance(document.getElementById('imageComparisonModal')).hide();
     });
   }
 
