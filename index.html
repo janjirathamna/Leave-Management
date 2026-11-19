@@ -106,10 +106,21 @@
 </head>
 <body>
 
+<!-- PIN LOCK -->
+<div id="pinLock" style="position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;background:var(--body-bg)">
+  <div class="emp-card p-4 text-center" style="width:300px">
+    <i class="bi bi-lock-fill fs-2 text-primary"></i>
+    <h6 class="fw-bold my-2" data-i18n="pinTitle">กรุณาใส่รหัสผ่าน</h6>
+    <input type="password" id="pinInput" class="form-control text-center" onkeydown="if(event.key==='Enter')tryUnlock()" autofocus>
+    <div id="pinMsg" class="text-danger small mt-1"></div>
+    <button class="btn btn-primary btn-sm w-100 mt-2" onclick="tryUnlock()" data-i18n="pinGo">เข้าสู่ระบบ</button>
+  </div>
+</div>
+
 <div id="loader" class="loading-overlay">
   <div class="text-center">
     <div class="spinner-border text-light mb-2" role="status"></div>
-    <div id="loaderText">กำลังโหลดข้อมูลจาก Google Sheets...</div>
+    <div id="loaderText">กำลังโหลดข้อมูลจาก Supabase...</div>
   </div>
 </div>
 
@@ -128,6 +139,9 @@
         <button type="button" class="btn btn-outline-primary btn-sm" id="btnTabOverview" onclick="switchTab('overview')">
           <i class="bi bi-bar-chart-fill"></i> <span data-i18n="tabOverview">ภาพรวมเปรียบเทียบ</span>
         </button>
+        <button type="button" class="btn btn-outline-primary btn-sm" id="btnTabOt" onclick="switchTab('ot')">
+          <i class="bi bi-clock-history"></i> <span data-i18n="tabOT">โอที (OT)</span>
+        </button>
       </div>
 
       <!-- เมนู Export -->
@@ -142,6 +156,12 @@
         </ul>
       </div>
 
+      <button class="btn btn-primary btn-sm" onclick="openEntryModal()">
+        <i class="bi bi-journal-plus"></i> <span data-i18n="btnEntry">บันทึกข้อมูล</span>
+      </button>
+      <button class="btn btn-outline-warning btn-sm" onclick="openQuotaModal()">
+        <i class="bi bi-ui-checks-grid"></i> <span data-i18n="btnQuota">โควต้า</span>
+      </button>
       <button class="btn btn-success btn-sm" onclick="openAddModal()">
         <i class="bi bi-person-plus-fill"></i> <span data-i18n="btnAdd">เพิ่มพนักงาน</span>
       </button>
@@ -150,6 +170,7 @@
       </button>
 
       <button class="btn btn-outline-info btn-sm fw-bold" onclick="toggleLang()" id="btnLang">EN</button>
+      <button class="btn btn-outline-secondary btn-sm" onclick="lockApp()" title="Lock"><i class="bi bi-lock-fill"></i></button>
       <button class="btn btn-outline-warning btn-sm" onclick="toggleTheme()" id="btnTheme">
         <i class="bi bi-moon-stars-fill"></i>
       </button>
@@ -203,6 +224,25 @@
         </div>
       </div>
     </div>
+
+  <div id="viewOT" class="d-none">
+    <div class="row g-2 mb-3 align-items-center">
+      <div class="col-auto"><div class="btn-group btn-group-sm" id="otModes">
+        <button class="btn btn-primary" data-m="day" onclick="otMode('day')" data-i18n="otDay">รายวัน</button>
+        <button class="btn btn-outline-primary" data-m="week" onclick="otMode('week')" data-i18n="otWeek">รายสัปดาห์</button>
+        <button class="btn btn-outline-primary" data-m="month" onclick="otMode('month')" data-i18n="otMonth">รายเดือน</button>
+        <button class="btn btn-outline-primary" data-m="year" onclick="otMode('year')" data-i18n="otYear">รายปี</button>
+      </div></div>
+      <div class="col-auto"><div class="btn-group btn-group-sm">
+        <button class="btn btn-outline-secondary" onclick="otStep(-1)"><i class="bi bi-chevron-left"></i></button>
+        <input type="date" id="otAnchor" class="form-control form-control-sm" style="width:auto;border-radius:0" onchange="otSetAnchor(this.value)">
+        <button class="btn btn-outline-secondary" onclick="otStep(1)"><i class="bi bi-chevron-right"></i></button>
+      </div></div>
+      <div class="col-auto"><select id="otEmp" class="form-select form-select-sm" onchange="renderOT()"></select></div>
+      <div class="col text-muted small" id="otRange"></div>
+    </div>
+    <div class="row g-3 mb-3" id="otKpi"></div>
+    <div class="emp-card p-3"><div class="table-responsive" id="otTable"></div></div>
   </div>
 </div>
 
@@ -412,12 +452,61 @@
   </div>
 </div>
 
+<!-- MODAL: บันทึกข้อมูล (ฟอร์มลา / นำเข้า OT) -->
+<div class="modal fade" id="entryModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content">
+    <div class="modal-header"><h5 class="modal-title fw-bold" data-i18n="entTitle">บันทึกข้อมูลการลา / OT</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body">
+      <ul class="nav nav-tabs mb-3">
+        <li class="nav-item"><button type="button" class="nav-link active" data-bs-toggle="tab" data-bs-target="#entLeave" data-i18n="entTabLeave">ฟอร์มการลา</button></li>
+        <li class="nav-item"><button type="button" class="nav-link" data-bs-toggle="tab" data-bs-target="#entOT" data-i18n="entTabOT">นำเข้า OT (ไฟล์)</button></li>
+      </ul>
+      <div class="tab-content">
+        <div class="tab-pane fade show active" id="entLeave">
+          <div class="row g-2">
+            <div class="col-md-6"><label class="form-label small mb-0" data-i18n="fEmp">พนักงาน</label><select id="lvEmp" class="form-select form-select-sm"></select></div>
+            <div class="col-md-6"><label class="form-label small mb-0" data-i18n="fDate">วันที่ลา</label><input type="date" id="lvDate" class="form-control form-control-sm"></div>
+            <div class="col-md-6"><label class="form-label small mb-0" data-i18n="fType">ประเภทการลา</label><select id="lvType" class="form-select form-select-sm"></select></div>
+            <div class="col-md-6"><label class="form-label small mb-0" data-i18n="fHours">ชั่วโมงที่ลา</label><input type="number" id="lvHours" min="0" step="0.5" class="form-control form-control-sm"></div>
+            <div class="col-12"><label class="form-label small mb-0" data-i18n="fReason">เหตุผลในการลา</label><textarea id="lvReason" rows="2" class="form-control form-control-sm"></textarea></div>
+          </div>
+          <button class="btn btn-success btn-sm mt-3" onclick="saveLeaveLog()" data-i18n="btnSaveLeave">บันทึกการลา</button>
+          <hr><h6 class="fw-bold" data-i18n="leaveHist">ประวัติการลาล่าสุด</h6><div id="lvHist" class="table-responsive small"></div>
+        </div>
+        <div class="tab-pane fade" id="entOT">
+          <label class="form-label small mb-0" data-i18n="otFile">ไฟล์ .xlsx / .csv</label>
+          <input type="file" id="otFile" class="form-control form-control-sm" accept=".xlsx,.xls,.csv" onchange="otReadFile(this)">
+          <div id="otMap" class="mt-3"></div>
+        </div>
+      </div>
+    </div>
+  </div></div>
+</div>
+
+<!-- MODAL: จัดการโควต้า -->
+<div class="modal fade" id="quotaModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content">
+    <div class="modal-header"><h5 class="modal-title fw-bold" data-i18n="quotaTitle">จัดการโควต้าวันลา</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body">
+      <div id="qTable" class="table-responsive"></div>
+      <label class="form-label small mb-0" data-i18n="quotaNote">หมายเหตุ (เก็บใน Log)</label><input id="qNote" class="form-control form-control-sm">
+      <hr><h6 class="fw-bold" data-i18n="quotaHist">ประวัติการแก้ไขโควต้า</h6><div id="qHist" class="table-responsive small"></div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal" data-i18n="btnCancel">ยกเลิก</button>
+      <button type="button" class="btn btn-warning btn-sm fw-bold" onclick="saveQuotas()" data-i18n="btnSaveQuota">บันทึกโควต้า</button>
+    </div>
+  </div></div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
   const supabaseClient = supabase.createClient(
   'https://pqfhjxpijmqaaoxpmshv.supabase.co',
   'sb_publishable_DSt6DloT95NQGoOwlLLSiQ_wLurwO0C'
 );
+const ACCESS_PIN = '00000';        // <-- รหัสผ่านเข้าเว็บ แก้ตรงนี้ / change the access password here
+const HOURS_PER_DAY = 8;          // ชั่วโมง/วัน ใช้แปลงชั่วโมงลา -> วัน (mp_leaves.used เก็บเป็นวัน)
 const LEAVE_LABELS = { annual: 'ลาพักร้อน', personal: 'ลากิจ', sick: 'ลาป่วย' };
 const chk = r => { if (r.error) throw r.error; return r.data; };
 
@@ -575,7 +664,7 @@ async function loadLeaveData() {
 
   window.onload = () => {
     loadColorsFromStorage();
-    fetchData();
+    if (isUnlocked()) fetchData();
   };
 
   function showLoader(show, text = 'กำลังประมวลผล...') {
@@ -602,6 +691,7 @@ async function callGasApi(action, payload) {
   try {
     const db = supabaseClient;
     const types = ['annual', 'personal', 'sick'];
+    const qlog = quotaDiffs(action, payload);
 
     if (action === 'updateEmployee') {
       await db.from('mp_employees')
@@ -636,6 +726,7 @@ async function callGasApi(action, payload) {
       if (ids.length) await db.from('mp_leaves').update({ used: 0 }).in('id', ids).then(chk);
     }
 
+    if (qlog.length) { try { await db.from('mp_quota_logs').insert(qlog).then(chk); } catch (e) { console.warn('quota log', e); } }
     employeesData = await loadLeaveData();
     renderCards();
     renderOverview();
@@ -1172,16 +1263,17 @@ async function callGasApi(action, payload) {
   }
 
   function switchTab(tab) {
-    const isCards = tab === 'cards';
-    document.getElementById('viewCards').classList.toggle('d-none', !isCards);
-    document.getElementById('filterBar').classList.toggle('d-none', !isCards);
-    document.getElementById('viewOverview').classList.toggle('d-none', isCards);
-
-    document.getElementById('btnTabCards').classList.toggle('btn-primary', isCards);
-    document.getElementById('btnTabCards').classList.toggle('btn-outline-primary', !isCards);
-    document.getElementById('btnTabOverview').classList.toggle('btn-primary', !isCards);
-    document.getElementById('btnTabOverview').classList.toggle('btn-outline-primary', isCards);
-    if (!isCards) renderOverview();
+    [['cards', 'Cards'], ['overview', 'Overview'], ['ot', 'Ot']].forEach(([t, n]) => {
+      const b = document.getElementById('btnTab' + n);
+      b.classList.toggle('btn-primary', t === tab);
+      b.classList.toggle('btn-outline-primary', t !== tab);
+    });
+    document.getElementById('viewCards').classList.toggle('d-none', tab !== 'cards');
+    document.getElementById('filterBar').classList.toggle('d-none', tab !== 'cards');
+    document.getElementById('viewOverview').classList.toggle('d-none', tab !== 'overview');
+    document.getElementById('viewOT').classList.toggle('d-none', tab !== 'ot');
+    if (tab === 'overview') renderOverview();
+    if (tab === 'ot') loadOT();
   }
 
   function toggleTheme() {
@@ -1205,7 +1297,297 @@ async function callGasApi(action, payload) {
       : 'Search name or ID...';
     renderCards();
     renderOverview();
+    if (!document.getElementById('viewOT').classList.contains('d-none')) renderOT();
   }
+
+/* ===================== v2: PIN lock / Leave log / OT tab / Quota admin ===================== */
+const byId = id => document.getElementById(id);
+const xE = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const L = (th, en) => currentLang === 'th' ? th : en;
+const tx = k => (i18n[currentLang] || {})[k] || k;
+const p2 = n => String(n).padStart(2, '0');
+const nowBkk = () => new Date(Date.now() + 7 * 36e5).toISOString().slice(0, 10);
+const X = {   // key: [Thai, English]  (static labels, data-i18n)
+  tabOT: ['โอที (OT)', 'OT'], btnEntry: ['บันทึกข้อมูล', 'Data Entry'], btnQuota: ['โควต้า', 'Quota'],
+  entTitle: ['บันทึกข้อมูลการลา / OT', 'Leave / OT entry'], entTabLeave: ['ฟอร์มการลา', 'Leave form'], entTabOT: ['นำเข้า OT (ไฟล์)', 'Import OT (file)'],
+  fEmp: ['พนักงาน', 'Employee'], fDate: ['วันที่ลา', 'Leave date'], fType: ['ประเภทการลา', 'Leave type'], fHours: ['ชั่วโมงที่ลา', 'Hours'], fReason: ['เหตุผลในการลา', 'Reason'],
+  btnSaveLeave: ['บันทึกการลา', 'Save leave'], leaveHist: ['ประวัติการลาล่าสุด', 'Recent leave log'], otFile: ['ไฟล์ .xlsx / .csv', 'File .xlsx / .csv'],
+  otMapTitle: ['จับคู่คอลัมน์ (Column Mapping)', 'Column mapping'], btnOtImport: ['นำเข้า', 'Import'],
+  otDay: ['รายวัน', 'Daily'], otWeek: ['รายสัปดาห์', 'Weekly'], otMonth: ['รายเดือน', 'Monthly'], otYear: ['รายปี', 'Yearly'], otAll: ['ทุกคน', 'Everyone'],
+  quotaTitle: ['จัดการโควต้าวันลา', 'Leave quota admin'], quotaNote: ['หมายเหตุ (เก็บใน Log)', 'Note (saved in log)'], btnSaveQuota: ['บันทึกโควต้า', 'Save quotas'],
+  quotaHist: ['ประวัติการแก้ไขโควต้า', 'Quota change log'], pinTitle: ['กรุณาใส่รหัสผ่าน', 'Enter password'], pinGo: ['เข้าสู่ระบบ', 'Unlock']
+};
+Object.entries(X).forEach(([k, [a, b]]) => { i18n.th[k] = a; i18n.en[k] = b; });
+
+/* ---------- PIN ---------- */
+const isUnlocked = () => sessionStorage.getItem('mpAuth') === '1';
+function tryUnlock() {
+  if (byId('pinInput').value === ACCESS_PIN) { sessionStorage.setItem('mpAuth', '1'); byId('pinLock').style.display = 'none'; fetchData(); }
+  else { byId('pinMsg').textContent = '✖ ' + L('รหัสไม่ถูกต้อง', 'Wrong password'); byId('pinInput').select(); }
+}
+function lockApp() { sessionStorage.removeItem('mpAuth'); location.reload(); }
+if (isUnlocked()) byId('pinLock').style.display = 'none';
+
+/* ---------- helpers ---------- */
+async function xAll(table, col = 'id') {
+  const out = [];
+  for (let f = 0; ; f += 1000) {
+    const { data, error } = await supabaseClient.from(table).select('*').order(col).range(f, f + 999);
+    if (error) throw error; out.push(...data); if (data.length < 1000) return out;
+  }
+}
+async function reloadAll() { employeesData = await loadLeaveData(); renderCards(); renderOverview(); }
+async function addUsed(rowId, deltaDays) {
+  const cur = await supabaseClient.from('mp_leaves').select('used').eq('id', rowId).single().then(chk);
+  const next = Math.max(0, Math.round((Number(cur.used) + deltaDays) * 1000) / 1000);
+  await supabaseClient.from('mp_leaves').update({ used: next }).eq('id', rowId).then(chk);
+}
+function quotaDiffs(action, p) {                       // quota changes made through the old edit / bulk functions -> mp_quota_logs
+  const out = [], ty = ['annual', 'personal', 'sick'];
+  if (action === 'updateEmployee') {
+    const o = employeesData.find(e => e.startRow === p.startRow);
+    ty.forEach(t => { if (o && o.leaves[t] && p.leaves[t] && Number(p.leaves[t].quota) !== o.leaves[t].quota)
+      out.push({ employee_id: p.startRow, leave_key: t, old_quota: o.leaves[t].quota, new_quota: Number(p.leaves[t].quota), note: 'edit employee', changed_by: 'admin-web' }); });
+  } else if (action === 'updateAllQuotas') {
+    employeesData.forEach(e => ty.forEach(t => { if (p[t] !== '' && e.leaves[t] && Number(p[t]) !== e.leaves[t].quota)
+      out.push({ employee_id: e.startRow, leave_key: t, old_quota: e.leaves[t].quota, new_quota: Number(p[t]), note: 'bulk quota', changed_by: 'admin-web' }); }));
+  }
+  return out;
+}
+
+/* ---------- ENTRY: leave form ---------- */
+function openEntryModal() {
+  byId('lvEmp').innerHTML = employeesData.map(e => `<option value="${e.startRow}">${xE(e.empId)} ${xE(e.name)}</option>`).join('');
+  byId('lvType').innerHTML = Object.entries(LEAVE_LABELS).map(([k, l]) => `<option value="${k}">${l}</option>`).join('');
+  byId('lvDate').value = nowBkk();
+  renderLeaveHist();
+  bootstrap.Modal.getOrCreateInstance(byId('entryModal')).show();
+}
+async function saveLeaveLog() {
+  const emp = employeesData.find(e => String(e.startRow) === byId('lvEmp').value), key = byId('lvType').value, date = byId('lvDate').value, hrs = Number(byId('lvHours').value);
+  if (!emp || !date || !(hrs > 0)) return alert(L('กรอกพนักงาน วันที่ และชั่วโมงที่ลา (> 0)', 'Employee, date and hours (> 0) are required'));
+  const lf = emp.leaves[key]; if (!lf) return alert(L('พนักงานไม่มีโควต้าประเภทนี้', 'No quota row for this leave type'));
+  showLoader(true, L('กำลังบันทึกข้อมูล...', 'Saving...'));
+  let logId = null;
+  try {
+    const log = await supabaseClient.from('mp_leave_logs').insert({ employee_id: emp.startRow, leave_key: key, label: lf.label || LEAVE_LABELS[key],
+      leave_date: date, hours: hrs, reason: byId('lvReason').value.trim() || null, source: 'web' }).select().single().then(chk);
+    logId = log.id;
+    await addUsed(lf.row, hrs / HOURS_PER_DAY);
+  } catch (err) {
+    if (logId) await supabaseClient.from('mp_leave_logs').delete().eq('id', logId);
+    showLoader(false); return alert('Error: ' + (err.message || err));
+  }
+  byId('lvHours').value = ''; byId('lvReason').value = '';
+  try { await reloadAll(); await renderLeaveHist(); } catch (err) { alert('Error: ' + (err.message || err)); }
+  showLoader(false);
+}
+async function renderLeaveHist() {
+  const box = byId('lvHist'); box.textContent = '…';
+  try {
+    const { data, error } = await supabaseClient.from('mp_leave_logs').select('*').order('id', { ascending: false }).limit(30); if (error) throw error;
+    box.innerHTML = `<table class="table table-sm"><thead class="table-light"><tr><th>${L('วันที่', 'Date')}</th><th>${L('พนักงาน', 'Employee')}</th><th>${L('ประเภท', 'Type')}</th><th>h</th><th>${L('เหตุผล', 'Reason')}</th><th></th></tr></thead><tbody>` +
+      data.map(r => { const e = employeesData.find(x => x.startRow === r.employee_id);
+        return `<tr><td>${xE(r.leave_date)}</td><td>${xE(e ? e.name : r.employee_id)}</td><td>${xE(r.label || r.leave_key)}</td><td>${r.hours}</td><td>${xE(r.reason || '')}</td><td><button class="btn btn-sm btn-outline-danger py-0" onclick="delLeaveLog(${r.id})"><i class="bi bi-trash"></i></button></td></tr>`; }).join('') + '</tbody></table>';
+  } catch (e) { box.textContent = e.message; }
+}
+async function delLeaveLog(id) {
+  if (!confirm(L('ลบรายการนี้และคืนยอดวันลา?', 'Delete this log and give the days back?'))) return;
+  try {
+    const r = await supabaseClient.from('mp_leave_logs').select('*').eq('id', id).single().then(chk);
+    const e = employeesData.find(x => x.startRow === r.employee_id), lf = e && e.leaves[r.leave_key];
+    if (lf) await addUsed(lf.row, -Number(r.hours) / HOURS_PER_DAY);
+    await supabaseClient.from('mp_leave_logs').delete().eq('id', id).then(chk);
+    await reloadAll(); renderLeaveHist();
+  } catch (err) { alert('Error: ' + (err.message || err)); }
+}
+
+/* ---------- ENTRY: OT import (xlsx / csv + column mapping) ---------- */
+const OT_FIELDS = [
+  ['emp_name', 'ชื่อ / Name', ['人员', '填写人', '姓名', 'name', 'ชื่อ', 'พนักงาน']],
+  ['emp_code', 'รหัส / ID  填写人.工号', ['填写人.工号', '工号', 'emp_id', 'empid', 'รหัส']],
+  ['shift', 'กะ / Shift  班别', ['班别', 'shift', 'กะ']],
+  ['ot_date', 'วันที่ OT  加班日期', ['加班日期', 'ot_date', 'date', 'วันที่']],
+  ['ot_hours', 'ชั่วโมง OT  加班小时数', ['加班小时数', 'ot_hours', 'hours', 'ชั่วโมง']],
+  ['day_type', 'ประเภทวัน  工作日&休息日&节假日', ['工作日&休息日&节假日', 'day_type', 'daytype']],
+  ['is_leave', 'ลาหรือไม่  是否请假', ['是否请假', 'is_leave']],
+  ['submitted_at', 'เวลาส่ง  提交时间', ['提交时间', 'submitted_at', 'timestamp']],
+  ['leave_category', 'ประเภทลา  请假类别', ['请假类别', 'leave_category']],
+  ['leave_time', 'เวลาลา  请假时间', ['请假时间', 'leave_time']]
+];
+let otHeaders = [], otFileRows = [];
+function csvToAoa(txt) {
+  txt = txt.replace(/^\uFEFF/, ''); const sep = (txt.split('\n')[0] || '').includes('\t') ? '\t' : ',', rows = []; let row = [], cell = '', q = false;
+  for (let i = 0; i < txt.length; i++) {
+    const c = txt[i];
+    if (q) { if (c === '"') { if (txt[i + 1] === '"') { cell += '"'; i++; } else q = false; } else cell += c; }
+    else if (c === '"' && cell === '') q = true;
+    else if (c === sep) { row.push(cell); cell = ''; }
+    else if (c === '\n' || c === '\r') { if (c === '\r' && txt[i + 1] === '\n') i++; row.push(cell); cell = ''; rows.push(row); row = []; }
+    else cell += c;
+  }
+  row.push(cell); rows.push(row); return rows;
+}
+async function otReadFile(inp) {
+  const f = inp.files[0]; if (!f) return;
+  try {
+    let aoa;
+    if (/\.csv$/i.test(f.name)) aoa = csvToAoa(await f.text());
+    else { const wb = XLSX.read(await f.arrayBuffer(), { type: 'array', cellDates: true }); aoa = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: true, defval: '' }); }
+    aoa = aoa.filter(r => r.some(c => String(c ?? '').trim() !== ''));
+    otHeaders = (aoa[0] || []).map(h => String(h).trim()); otFileRows = aoa.slice(1); renderMap();
+  } catch (e) { alert('Error: ' + e.message); }
+}
+function renderMap() {
+  const low = otHeaders.map(h => h.toLowerCase());
+  const guess = al => { for (const a of al) { const i = low.indexOf(a.toLowerCase()); if (i >= 0) return i; }
+    for (const a of al) { const i = low.findIndex(h => h.includes(a.toLowerCase())); if (i >= 0) return i; } return -1; };
+  byId('otMap').innerHTML = `<h6 class="fw-bold">${tx('otMapTitle')} <span class="text-muted small">(${otFileRows.length} ${L('แถว', 'rows')})</span></h6><div class="row g-2">` +
+    OT_FIELDS.map(([k, l, al]) => { const g = guess(al);
+      return `<div class="col-md-6"><label class="form-label small mb-0">${l}</label><select class="form-select form-select-sm" data-f="${k}"><option value="-1">— ${L('ไม่ใช้', 'skip')} —</option>${otHeaders.map((h, i) => `<option value="${i}"${g === i ? ' selected' : ''}>${xE(h)}</option>`).join('')}</select></div>`; }).join('') +
+    `</div><button class="btn btn-success btn-sm mt-3" onclick="otImport()">${tx('btnOtImport')}</button>`;
+}
+function parseDT(v) {                                   // -> { d:'yyyy-mm-dd', t:'HH:MM:SS'|null } | null   (day first, Buddhist year ok)
+  if (v == null || v === '') return null;
+  if (v instanceof Date) { const d = new Date(Math.round(v.getTime() / 1000) * 1000); return { d: `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`, t: `${p2(d.getHours())}:${p2(d.getMinutes())}:${p2(d.getSeconds())}` }; }
+  if (typeof v === 'number') { const d = new Date(Math.round((v - 25569) * 86400) * 1000); return { d: d.toISOString().slice(0, 10), t: d.toISOString().slice(11, 19) }; }
+  const m = String(v).trim().match(/^(\d{1,4})[\/\-.](\d{1,2})[\/\-.](\d{1,4})(?:[ T,]+(\d{1,2})[:.](\d{2})(?::(\d{2}))?)?/);
+  if (!m) return null;
+  let y, mo, d;
+  if (m[1].length === 4) { y = +m[1]; mo = +m[2]; d = +m[3]; } else { d = +m[1]; mo = +m[2]; y = +m[3]; }
+  if (y < 100) y += 2000; else if (y > 2400) y -= 543;
+  if (mo > 12 && d <= 12) { const t = d; d = mo; mo = t; }
+  if (mo < 1 || mo > 12 || d < 1 || d > 31) return null;
+  return { d: `${y}-${p2(mo)}-${p2(d)}`, t: m[4] ? `${p2(m[4])}:${m[5]}:${m[6] || '00'}` : null };
+}
+const otSig = (c, n, d, h, s) => [String(c || n || '').trim().toLowerCase(), d, Number(h), String(s || '').trim().toLowerCase()].join('|');
+async function otImport() {
+  const map = {}; byId('otMap').querySelectorAll('select[data-f]').forEach(s => map[s.dataset.f] = +s.value);
+  if (map.ot_date < 0 || map.ot_hours < 0 || (map.emp_code < 0 && map.emp_name < 0)) return alert(L('ต้องจับคู่อย่างน้อย: วันที่ OT, ชั่วโมง OT และ ชื่อหรือรหัส', 'Map at least: OT date, OT hours and name or ID'));
+  showLoader(true, L('กำลังนำเข้า...', 'Importing...'));
+  try {
+    const cell = (r, k) => map[k] >= 0 ? r[map[k]] : '';
+    const T = v => { const s = String(v ?? '').trim(); return s || null; };
+    const fmt = v => v instanceof Date ? (p => p.d + ' ' + p.t)(parseDT(v)) : T(v);
+    const code0 = v => { const s = T(v); return s && /^\d+\.0+$/.test(s) ? s.replace(/\.0+$/, '') : s; };
+    const byCode = new Map(employeesData.map(e => [String(e.empId).trim().toLowerCase(), e.startRow]));
+    const byName = new Map(employeesData.map(e => [String(e.name).trim().toLowerCase(), e.startRow]));
+    const exist = new Set((await xAll('mp_ot_logs')).map(r => otSig(r.emp_code, r.emp_name, r.ot_date, r.ot_hours, r.shift)));
+    const out = []; let dup = 0, bad = 0, unm = 0;
+    otFileRows.forEach(r => {
+      const dt = parseDT(cell(r, 'ot_date')), hrs = parseFloat(String(cell(r, 'ot_hours')).replace(',', '.')), code = code0(cell(r, 'emp_code')), name = T(cell(r, 'emp_name'));
+      if (!dt || !(hrs >= 0) || (!code && !name)) { bad++; return; }
+      const sa = parseDT(cell(r, 'submitted_at')), sh = T(cell(r, 'shift')), s = otSig(code, name, dt.d, hrs, sh);
+      if (exist.has(s)) { dup++; return; } exist.add(s);
+      const eid = (code && byCode.get(code.toLowerCase())) || (name && byName.get(name.toLowerCase())) || null; if (!eid) unm++;
+      out.push({ employee_id: eid, emp_code: code, emp_name: name, shift: sh, ot_date: dt.d, ot_hours: hrs, day_type: T(cell(r, 'day_type')),
+        is_leave: map.is_leave >= 0 ? /^(是|yes|y|true|1|ใช่)/i.test(String(cell(r, 'is_leave')).trim()) : null,
+        submitted_at: sa ? `${sa.d}T${sa.t || '00:00:00'}+07:00` : null, leave_category: fmt(cell(r, 'leave_category')), leave_time: fmt(cell(r, 'leave_time')), source: 'web-import' });
+    });
+    for (let i = 0; i < out.length; i += 500) { const { error } = await supabaseClient.from('mp_ot_logs').insert(out.slice(i, i + 500)); if (error) throw error; }
+    byId('otFile').value = ''; byId('otMap').innerHTML = '';
+    alert(L(`นำเข้า ${out.length} แถว · ซ้ำข้าม ${dup} · ข้อมูลไม่ครบ ${bad} · ไม่พบพนักงานในระบบ ${unm}`, `Imported ${out.length} · duplicates skipped ${dup} · invalid ${bad} · no matching employee ${unm}`));
+    if (!byId('viewOT').classList.contains('d-none')) loadOT();
+  } catch (err) { alert('Error: ' + (err.message || err)); }
+  showLoader(false);
+}
+
+/* ---------- OT tab ---------- */
+let otRows = [], otM = 'day', otA = '';
+const OT_T = { work: ['วันทำงาน', 'Workday'], rest: ['วันหยุด', 'Rest day'], hol: ['วันหยุดนักขัตฤกษ์', 'Holiday'] };
+const otT = k => OT_T[k][currentLang === 'th' ? 0 : 1];
+const dayKind = s => /节假|holiday|นักขัต|เทศกาล/i.test(s || '') ? 'hol' : /休息|rest|weekend|หยุด|เสาร์|อาทิตย์/i.test(s || '') ? 'rest' : 'work';
+const n2 = v => Math.round(v * 100) / 100;
+function otWho(r) { const e = employeesData.find(x => x.startRow === r.employee_id);
+  return { key: e ? 'e' + e.startRow : 'n' + (r.emp_code || r.emp_name || ''), name: e ? e.name : (r.emp_name || ''), code: e ? e.empId : (r.emp_code || '') }; }
+function otRange(mode, a) {
+  const iso = d => d.toISOString().slice(0, 10), d = new Date(a + 'T00:00:00Z'); let s, e;
+  if (mode === 'day') { s = e = d; }
+  else if (mode === 'week') { const w = (d.getUTCDay() + 6) % 7; s = new Date(d); s.setUTCDate(d.getUTCDate() - w); e = new Date(s); e.setUTCDate(s.getUTCDate() + 6); }
+  else if (mode === 'month') { s = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)); e = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)); }
+  else { s = new Date(Date.UTC(d.getUTCFullYear(), 0, 1)); e = new Date(Date.UTC(d.getUTCFullYear(), 11, 31)); }
+  return [iso(s), iso(e)];
+}
+function otStep(dir) {
+  const d = new Date(otA + 'T00:00:00Z');
+  if (otM === 'day') d.setUTCDate(d.getUTCDate() + dir); else if (otM === 'week') d.setUTCDate(d.getUTCDate() + 7 * dir);
+  else if (otM === 'month') { d.setUTCDate(1); d.setUTCMonth(d.getUTCMonth() + dir); } else { d.setUTCDate(1); d.setUTCFullYear(d.getUTCFullYear() + dir); }
+  otA = d.toISOString().slice(0, 10); renderOT();
+}
+function otSetAnchor(v) { if (v) { otA = v; renderOT(); } }
+function otMode(m) { otM = m; renderOT(); }
+async function loadOT() {
+  try { otRows = await xAll('mp_ot_logs'); } catch (e) { alert('Error: ' + e.message); otRows = []; }
+  if (!otA) otA = otRows.reduce((m, r) => r.ot_date > m ? r.ot_date : m, '') || nowBkk();
+  renderOT();
+}
+async function otDel(id) {
+  if (!confirm(L('ลบรายการ OT นี้?', 'Delete this OT record?'))) return;
+  const { error } = await supabaseClient.from('mp_ot_logs').delete().eq('id', id);
+  if (error) return alert(error.message); loadOT();
+}
+function renderOT() {
+  byId('otAnchor').value = otA;
+  byId('otModes').querySelectorAll('button').forEach(b => { const on = b.dataset.m === otM; b.classList.toggle('btn-primary', on); b.classList.toggle('btn-outline-primary', !on); });
+  const [s, e] = otRange(otM, otA); byId('otRange').textContent = s === e ? s : s + ' → ' + e;
+  const sel = byId('otEmp'), cur = sel.value, ppl = new Map();
+  otRows.forEach(r => { const w = otWho(r); ppl.set(w.key, (w.code ? w.code + ' ' : '') + w.name); });
+  sel.innerHTML = `<option value="">${tx('otAll')}</option>` + [...ppl].sort((a, b) => a[1].localeCompare(b[1])).map(([k, l]) => `<option value="${xE(k)}">${xE(l)}</option>`).join('');
+  sel.value = cur;
+  const rows = otRows.filter(r => r.ot_date >= s && r.ot_date <= e && (!sel.value || otWho(r).key === sel.value));
+  const hrs = r => Number(r.ot_hours) || 0, tot = rows.reduce((a, r) => a + hrs(r), 0);
+  byId('otKpi').innerHTML = [['⏱ OT (h)', n2(tot)], [L('พนักงาน', 'People'), new Set(rows.map(r => otWho(r).key)).size], [L('รายการ', 'Records'), rows.length]]
+    .map(([l, v]) => `<div class="col-4 col-md-3"><div class="emp-card p-3 text-center"><div class="small text-muted">${l}</div><div class="fs-4 fw-bold">${v}</div></div></div>`).join('');
+  let h = '';
+  if (otM === 'day') {
+    if (rows.length) h = `<table class="table table-sm table-hover align-middle mb-0"><thead class="table-light"><tr><th>${L('ชื่อ', 'Name')}</th><th>${L('รหัส', 'ID')}</th><th>${L('กะ', 'Shift')} 班别</th><th>${L('ประเภทวัน', 'Day type')}</th><th class="text-end">OT (h)</th><th></th></tr></thead><tbody>` +
+      rows.sort((a, b) => otWho(a).name.localeCompare(otWho(b).name)).map(r => { const w = otWho(r);
+        return `<tr><td>${xE(w.name)}</td><td>${xE(w.code)}</td><td>${xE(r.shift || '')}</td><td>${xE(otT(dayKind(r.day_type)))} <span class="text-muted small">${xE(r.day_type || '')}</span></td><td class="text-end fw-bold">${hrs(r)}</td><td class="text-end"><button class="btn btn-sm btn-outline-danger py-0" onclick="otDel(${r.id})"><i class="bi bi-trash"></i></button></td></tr>`; }).join('') + '</tbody></table>';
+  } else {
+    const m = new Map();
+    rows.forEach(r => { const w = otWho(r), o = m.get(w.key) || { ...w, sh: new Set(), work: 0, rest: 0, hol: 0, n: 0 }; o[dayKind(r.day_type)] += hrs(r); o.n++; if (r.shift) o.sh.add(r.shift); m.set(w.key, o); });
+    const list = [...m.values()].sort((a, b) => (b.work + b.rest + b.hol) - (a.work + a.rest + a.hol)), sum = k => n2(list.reduce((a, o) => a + o[k], 0));
+    if (list.length) h = `<table class="table table-sm table-hover align-middle mb-0"><thead class="table-light"><tr><th>${L('ชื่อ', 'Name')}</th><th>${L('รหัส', 'ID')}</th><th>${L('กะ', 'Shift')} 班别</th><th class="text-end">${otT('work')}</th><th class="text-end">${otT('rest')}</th><th class="text-end">${otT('hol')}</th><th class="text-end">${L('รวม', 'Total')} (h)</th><th class="text-end">${L('รายการ', 'Records')}</th></tr></thead><tbody>` +
+      list.map(o => `<tr><td>${xE(o.name)}</td><td>${xE(o.code)}</td><td>${xE([...o.sh].join(', '))}</td><td class="text-end">${n2(o.work)}</td><td class="text-end">${n2(o.rest)}</td><td class="text-end">${n2(o.hol)}</td><td class="text-end fw-bold">${n2(o.work + o.rest + o.hol)}</td><td class="text-end">${o.n}</td></tr>`).join('') +
+      `</tbody><tfoot class="table-light fw-bold"><tr><td colspan="3">${L('รวมทั้งหมด', 'Total')}</td><td class="text-end">${sum('work')}</td><td class="text-end">${sum('rest')}</td><td class="text-end">${sum('hol')}</td><td class="text-end">${n2(tot)}</td><td class="text-end">${rows.length}</td></tr></tfoot></table>`;
+  }
+  byId('otTable').innerHTML = h || '<div class="text-muted p-3">—</div>';
+}
+
+/* ---------- QUOTA admin ---------- */
+const QT = ['annual', 'personal', 'sick'];
+function openQuotaModal() { renderQuota(); renderQuotaHist(); byId('qNote').value = ''; bootstrap.Modal.getOrCreateInstance(byId('quotaModal')).show(); }
+function renderQuota() {
+  byId('qTable').innerHTML = `<table class="table table-sm align-middle text-center"><thead class="table-light"><tr><th class="text-start">${L('พนักงาน', 'Employee')}</th>${QT.map(t => `<th>${LEAVE_LABELS[t]}</th>`).join('')}</tr></thead><tbody>` +
+    employeesData.map(e => `<tr><td class="text-start">${xE(e.empId)} ${xE(e.name)}</td>${QT.map(t => { const q = e.leaves[t] ? e.leaves[t].quota : '';
+      return `<td><input type="number" step="any" min="0" class="form-control form-control-sm text-center mx-auto" style="width:90px" data-e="${e.startRow}" data-t="${t}" data-old="${q}" value="${q}"></td>`; }).join('')}</tr>`).join('') + '</tbody></table>';
+}
+async function renderQuotaHist() {
+  const box = byId('qHist'); box.textContent = '…';
+  try {
+    const { data, error } = await supabaseClient.from('mp_quota_logs').select('*').order('id', { ascending: false }).limit(50); if (error) throw error;
+    box.innerHTML = `<table class="table table-sm"><thead class="table-light"><tr><th>${L('เวลา', 'Time')}</th><th>${L('พนักงาน', 'Employee')}</th><th>${L('ประเภท', 'Type')}</th><th>${L('เดิม → ใหม่', 'Old → New')}</th><th>${L('หมายเหตุ', 'Note')}</th></tr></thead><tbody>` +
+      data.map(r => { const e = employeesData.find(x => x.startRow === r.employee_id);
+        return `<tr><td>${xE(new Date(r.created_at).toLocaleString(currentLang === 'th' ? 'th-TH' : 'en-GB', { timeZone: 'Asia/Bangkok' }))}</td><td>${xE(e ? e.name : r.employee_id)}</td><td>${xE(LEAVE_LABELS[r.leave_key] || r.leave_key)}</td><td>${r.old_quota ?? '—'} → <b>${r.new_quota}</b></td><td>${xE(r.note || '')}</td></tr>`; }).join('') + '</tbody></table>';
+  } catch (e) { box.textContent = e.message; }
+}
+async function saveQuotas() {
+  const note = byId('qNote').value.trim() || null, ch = [];
+  byId('qTable').querySelectorAll('input').forEach(i => { if (i.value !== '' && (i.dataset.old === '' || Number(i.value) !== Number(i.dataset.old)))
+    ch.push({ e: +i.dataset.e, t: i.dataset.t, o: i.dataset.old === '' ? null : Number(i.dataset.old), n: Number(i.value) }); });
+  if (!ch.length) return alert(L('ไม่มีการเปลี่ยนแปลง', 'No changes'));
+  showLoader(true, L('กำลังบันทึกข้อมูล...', 'Saving...'));
+  try {
+    for (const c of ch) {
+      const lf = employeesData.find(x => x.startRow === c.e).leaves[c.t];
+      if (lf) await supabaseClient.from('mp_leaves').update({ quota: c.n }).eq('id', lf.row).then(chk);
+      else await supabaseClient.from('mp_leaves').insert({ employee_id: c.e, leave_key: c.t, label: LEAVE_LABELS[c.t], quota: c.n, used: 0 }).then(chk);
+    }
+    await supabaseClient.from('mp_quota_logs').insert(ch.map(c => ({ employee_id: c.e, leave_key: c.t, old_quota: c.o, new_quota: c.n, note, changed_by: 'admin-web' }))).then(chk);
+    await reloadAll(); renderQuota(); renderQuotaHist(); byId('qNote').value = '';
+  } catch (err) { alert('Error: ' + (err.message || err)); }
+  showLoader(false);
+}
 </script>
 </body>
 </html>
