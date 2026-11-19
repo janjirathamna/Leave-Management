@@ -419,7 +419,6 @@
   'sb_publishable_DSt6DloT95NQGoOwlLLSiQ_wLurwO0C'
 );
 const LEAVE_LABELS = { annual: 'ลาพักร้อน', personal: 'ลากิจ', sick: 'ลาป่วย' };
-const LEAVE_KEYWORD = { annual: 'พักร้อน', personal: 'กิจ', sick: 'ป่วย' };
 const chk = r => { if (r.error) throw r.error; return r.data; };
 
 async function loadLeaveData() {
@@ -429,13 +428,9 @@ async function loadLeaveData() {
   ]);
   return emps.map(e => {
     const lv = {};
-    leaves.filter(x => x.employee_id === e.id).forEach(x => {
-      const t = String(x.leave_type || '');
-      let key = 'other';
-      if (t.includes('พักร้อน')) key = 'annual';
-      else if (t.includes('กิจ')) key = 'personal';
-      else if (t.includes('ป่วย')) key = 'sick';
-      lv[key] = { row: x.id, label: t, quota: Number(x.quota) || 0, used: Number(x.used) || 0 };
+      leaves.filter(x => x.employee_id === e.id).forEach(x => {
+    const key = ['annual', 'personal', 'sick'].includes(x.leave_key) ? x.leave_key : 'other';
+      lv[key] = { row: x.id, label: x.label || LEAVE_LABELS[key] || '', quota: Number(x.quota) || 0, used: Number(x.used) || 0 };
     });
     return { startRow: e.id, empId: e.emp_id, name: e.name, note: e.note || '', leaves: lv };
   });
@@ -622,9 +617,9 @@ async function callGasApi(action, payload) {
         .insert({ emp_id: payload.empId, name: payload.name, note: payload.note })
         .select().single().then(chk);
       await db.from('mp_leaves').insert([
-        { employee_id: emp.id, leave_type: LEAVE_LABELS.annual,   quota: Number(payload.annualQuota),   used: Number(payload.annualUsed) },
-        { employee_id: emp.id, leave_type: LEAVE_LABELS.personal, quota: Number(payload.personalQuota), used: Number(payload.personalUsed) },
-        { employee_id: emp.id, leave_type: LEAVE_LABELS.sick,     quota: Number(payload.sickQuota),     used: Number(payload.sickUsed) }
+        { employee_id: emp.id, leave_key: 'annual',   label: LEAVE_LABELS.annual,   quota: Number(payload.annualQuota),   used: Number(payload.annualUsed) },
+        { employee_id: emp.id, leave_key: 'personal', label: LEAVE_LABELS.personal, quota: Number(payload.personalQuota), used: Number(payload.personalUsed) },
+        { employee_id: emp.id, leave_key: 'sick',     label: LEAVE_LABELS.sick,     quota: Number(payload.sickQuota),     used: Number(payload.sickUsed) }
       ]).then(chk);
 
     } else if (action === 'deleteEmployee') {
@@ -634,7 +629,7 @@ async function callGasApi(action, payload) {
     } else if (action === 'updateAllQuotas') {
       await Promise.all(types.filter(t => payload[t] !== '').map(t =>
         db.from('mp_leaves').update({ quota: Number(payload[t]) })
-          .ilike('leave_type', `%${LEAVE_KEYWORD[t]}%`).then(chk)));
+          .eq('leave_key', t).then(chk)));
 
     } else if (action === 'resetAllUsage') {
       const ids = payload.flatMap(e => types.filter(t => e.leaves[t]).map(t => e.leaves[t].row));
