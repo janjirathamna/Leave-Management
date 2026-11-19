@@ -11,6 +11,7 @@
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <!-- SheetJS (XLSX Export) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <!-- html2pdf.js (PDF Export) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -413,8 +414,32 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-  const GAS_URL = 'https://script.google.com/macros/s/AKfycbx7uN2U7o7TBUXagc0yGDDqkj2SKbDY2t3J_-1jhYcCcYYCX7fUNn_j1MOZ_erUJg5QYw/exec'; // เปลี่ยนเป็น URL ของคุณ
+  const supabaseClient = supabase.createClient(
+  'https://pqfhjxpijmqaaoxpmshv.supabase.co',
+  'sb_publishable_DSt6DloT95NQGoOwlLLSiQ_wLurwO0C'
+);
+const LEAVE_LABELS = { annual: 'ลาพักร้อน', personal: 'ลากิจ', sick: 'ลาป่วย' };
+const LEAVE_KEYWORD = { annual: 'พักร้อน', personal: 'กิจ', sick: 'ป่วย' };
+const chk = r => { if (r.error) throw r.error; return r.data; };
 
+async function loadLeaveData() {
+  const [emps, leaves] = await Promise.all([
+    supabaseClient.from('mp_employees').select('*').order('id').then(chk),
+    supabaseClient.from('mp_leaves').select('*').order('id').then(chk)
+  ]);
+  return emps.map(e => {
+    const lv = {};
+    leaves.filter(x => x.employee_id === e.id).forEach(x => {
+      const t = String(x.leave_type || '');
+      let key = 'other';
+      if (t.includes('พักร้อน')) key = 'annual';
+      else if (t.includes('กิจ')) key = 'personal';
+      else if (t.includes('ป่วย')) key = 'sick';
+      lv[key] = { row: x.id, label: t, quota: Number(x.quota) || 0, used: Number(x.used) || 0 };
+    });
+    return { startRow: e.id, empId: e.emp_id, name: e.name, note: e.note || '', leaves: lv };
+  });
+}
   let employeesData = [];
   let currentLang = 'th';
   let cardCharts = {};
@@ -564,36 +589,67 @@
   }
 
   async function fetchData() {
-    showLoader(true, currentLang === 'th' ? 'กำลังดึงข้อมูลจาก Google Sheets...' : 'Loading...');
-    try {
-      const res = await fetch(`${GAS_URL}?action=getData`);
-      employeesData = await res.json();
-      renderCards();
-      renderOverview();
-    } catch (err) {
-      alert('Error fetching data: ' + err.message);
-    } finally {
-      showLoader(false);
-    }
+  showLoader(true, currentLang === 'th' ? 'กำลังดึงข้อมูลจาก Supabase...' : 'Loading...');
+  try {
+    employeesData = await loadLeaveData();
+    renderCards();
+    renderOverview();
+  } catch (err) {
+    alert('Error fetching data: ' + err.message);
+  } finally {
+    showLoader(false);
   }
+}
 
-  async function callGasApi(action, payload) {
-    showLoader(true, currentLang === 'th' ? 'กำลังบันทึกข้อมูล...' : 'Saving...');
-    try {
-      const res = await fetch(GAS_URL, {
-        method: 'POST',
-        body: JSON.stringify({ action, payload })
-      });
-      const data = await res.json();
-      employeesData = data;
-      renderCards();
-      renderOverview();
-    } catch (err) {
-      alert('Error saving data: ' + err.message);
-    } finally {
-      showLoader(false);
+// ชื่อฟังก์ชันคงเดิมเพื่อไม่ต้องแก้จุดเรียกใช้ แต่ภายในใช้ Supabase ทั้งหมด
+async function callGasApi(action, payload) {
+  showLoader(true, currentLang === 'th' ? 'กำลังบันทึกข้อมูล...' : 'Saving...');
+  try {
+    const db = supabaseClient;
+    const types = ['annual', 'personal', 'sick'];
+
+    if (action === 'updateEmployee') {
+      await db.from('mp_employees')
+        .update({ emp_id: payload.empId, name: payload.name, note: payload.note })
+        .eq('id', payload.startRow).then(chk);
+      await Promise.all(types.filter(t => payload.leaves[t]).map(t =>
+        db.from('mp_leaves')
+          .update({ quota: Number(payload.leaves[t].quota), used: Number(payload.leaves[t].used) })
+          .eq('id', payload.leaves[t].row).then(chk)));
+
+    } else if (action === 'addEmployee') {
+      const emp = await db.from('mp_employees')
+        .insert({ emp_id: payload.empId, name: payload.name, note: payload.note })
+        .select().single().then(chk);
+      await db.from('mp_leaves').insert([
+        { employee_id: emp.id, leave_type: LEAVE_LABELS.annual,   quota: Number(payload.annualQuota),   used: Number(payload.annualUsed) },
+        { employee_id: emp.id, leave_type: LEAVE_LABELS.personal, quota: Number(payload.personalQuota), used: Number(payload.personalUsed) },
+        { employee_id: emp.id, leave_type: LEAVE_LABELS.sick,     quota: Number(payload.sickQuota),     used: Number(payload.sickUsed) }
+      ]).then(chk);
+
+    } else if (action === 'deleteEmployee') {
+      await db.from('mp_leaves').delete().eq('employee_id', payload).then(chk);
+      await db.from('mp_employees').delete().eq('id', payload).then(chk);
+
+    } else if (action === 'updateAllQuotas') {
+      await Promise.all(types.filter(t => payload[t] !== '').map(t =>
+        db.from('mp_leaves').update({ quota: Number(payload[t]) })
+          .ilike('leave_type', `%${LEAVE_KEYWORD[t]}%`).then(chk)));
+
+    } else if (action === 'resetAllUsage') {
+      const ids = payload.flatMap(e => types.filter(t => e.leaves[t]).map(t => e.leaves[t].row));
+      if (ids.length) await db.from('mp_leaves').update({ used: 0 }).in('id', ids).then(chk);
     }
+
+    employeesData = await loadLeaveData();
+    renderCards();
+    renderOverview();
+  } catch (err) {
+    alert('Error saving data: ' + err.message);
+  } finally {
+    showLoader(false);
   }
+}
 
   function getBarColor(pct) {
     const cLow = getComputedStyle(document.documentElement).getPropertyValue('--color-low').trim();
@@ -1038,8 +1094,8 @@
   }
 
   function saveEdit() {
-    const startRow = Number(document.getElementById('editStartRow').value);
-    const emp = employeesData.find(e => e.startRow === startRow);
+    const startRow = document.getElementById('editStartRow').value;
+    const emp = employeesData.find(e => String(e.startRow) === startRow);
     const payload = JSON.parse(JSON.stringify(emp));
 
     payload.empId = document.getElementById('editEmpId').value.trim();
@@ -1059,7 +1115,7 @@
 
   function confirmDelete() {
     if (!confirm(currentLang === 'th' ? 'ยืนยันการลบข้อมูลพนักงานคนนี้ทั้ง 3 แถว?' : 'Delete this employee?')) return;
-    const startRow = Number(document.getElementById('editStartRow').value);
+    const startRow = document.getElementById('editStartRow').value;
     bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
     callGasApi('deleteEmployee', startRow);
   }
