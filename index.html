@@ -233,26 +233,25 @@
 
   <!-- แท็บ: ภาพรวมเปรียบเทียบ -->
   <div id="viewOverview" class="d-none">
+    <div class="row g-2 mb-3 align-items-center">
+      <div class="col-auto"><div class="btn-group btn-group-sm mp-toggle" id="ovModes">
+        <button class="btn btn-outline-primary" data-m="day" onclick="ovMode('day')" data-i18n="otDay">รายวัน</button>
+        <button class="btn btn-outline-primary" data-m="week" onclick="ovMode('week')" data-i18n="otWeek">รายสัปดาห์</button>
+        <button class="btn btn-primary" data-m="month" onclick="ovMode('month')" data-i18n="otMonth">รายเดือน</button>
+        <button class="btn btn-outline-primary" data-m="year" onclick="ovMode('year')" data-i18n="otYear">รายปี</button>
+      </div></div>
+      <div class="col-auto"><div class="btn-group btn-group-sm">
+        <button class="btn btn-outline-secondary" onclick="ovStep(-1)"><i class="bi bi-chevron-left"></i></button>
+        <input type="date" id="ovAnchor" class="form-control form-control-sm" style="width:auto;border-radius:0" onchange="ovSetAnchor(this.value)">
+        <button class="btn btn-outline-secondary" onclick="ovStep(1)"><i class="bi bi-chevron-right"></i></button>
+      </div></div>
+      <div class="col text-muted small" id="ovRange"></div>
+    </div>
     <div class="row g-3 mb-4" id="kpiSection"></div>
     <div class="row g-4">
-      <div class="col-lg-8">
-        <div class="emp-card p-4 h-100">
-          <h5 class="fw-bold mb-1" data-i18n="chartRankTitle">อันดับดัชนีการลาเฉลี่ยรายบุคคล (%)</h5>
-          <p class="text-muted small mb-3" data-i18n="chartRankSub">คำนวณจากค่าเฉลี่ยเปอร์เซ็นต์การใช้วันลาทุกประเภท เพื่อความยุติธรรม</p>
-          <div style="height: 380px;">
-            <canvas id="overviewBarChart"></canvas>
-          </div>
-        </div>
-      </div>
-      <div class="col-lg-4">
-        <div class="emp-card p-4 h-100">
-          <h5 class="fw-bold mb-1" data-i18n="chartTypeTitle">สัดส่วนประเภทการลาทั้งองค์กร</h5>
-          <p class="text-muted small mb-3" data-i18n="chartTypeSub">เปรียบเทียบค่าเฉลี่ย % การใช้โควต้าแยกตามประเภท</p>
-          <div style="height: 320px;" class="d-flex align-items-center justify-content-center">
-            <canvas id="overviewPieChart"></canvas>
-          </div>
-        </div>
-      </div>
+      <div class="col-lg-6"><div class="emp-card p-4 h-100"><h5 class="fw-bold mb-1" id="ovH1"></h5><p class="text-muted small mb-3" id="ovP1"></p><div id="ovOtBox"><canvas id="ovOtChart"></canvas></div></div></div>
+      <div class="col-lg-6"><div class="emp-card p-4 h-100"><h5 class="fw-bold mb-1" id="ovH2"></h5><p class="text-muted small mb-3" id="ovP2"></p><div id="ovLvBox"><canvas id="overviewBarChart"></canvas></div></div></div>
+      <div class="col-lg-4"><div class="emp-card p-4 h-100"><h5 class="fw-bold mb-1" id="ovH3"></h5><p class="text-muted small mb-3" id="ovP3"></p><div style="height:300px" class="d-flex align-items-center justify-content-center"><canvas id="overviewPieChart"></canvas></div></div></div>
     </div>
   </div>
 
@@ -260,10 +259,10 @@
   <div id="viewOT" class="d-none">
     <div class="row g-2 mb-3 align-items-center">
       <div class="col-auto"><div class="btn-group btn-group-sm mp-toggle" id="otViews">
-        <button class="btn btn-primary" data-v="actual" onclick="otSetView('actual')" data-i18n="otActual">OT จริง</button>
-        <button class="btn btn-outline-primary" data-v="plan" onclick="otSetView('plan')" data-i18n="otPlan">แผน OT</button>
+        <button class="btn btn-primary" data-v="actual" onclick="otSetView('actual')" data-i18n="btnOtDaily">ลง OT ประจำวัน</button>
+        <button class="btn btn-outline-primary" data-v="plan" onclick="otSetView('plan')" data-i18n="btnOtPlan">ลงแพลน OT วันหยุด</button>
       </div></div>
-      <div class="col-auto"><button class="btn btn-success btn-sm" onclick="openDataModal('ot')">＋ <span data-i18n="btnOtDaily">ลง OT ประจำวัน</span></button> <button class="btn btn-outline-success btn-sm" onclick="openDataModal('plan')">＋ <span data-i18n="btnOtPlan">ลงแพลน OT วันหยุด</span></button></div>
+      <div class="col-auto"><button class="btn btn-success btn-sm fw-bold" onclick="otOpenEntry()"><i class="bi bi-plus-lg"></i> <span data-i18n="btnAddData">Add Data</span></button></div>
       <div class="col-auto"><div class="btn-group btn-group-sm mp-toggle" id="otModes">
         <button class="btn btn-primary" data-m="day" onclick="otMode('day')" data-i18n="otDay">รายวัน</button>
         <button class="btn btn-outline-primary" data-m="week" onclick="otMode('week')" data-i18n="otWeek">รายสัปดาห์</button>
@@ -880,103 +879,64 @@ async function callGasApi(action, payload) {
   let overviewBar = null;
   let overviewPie = null;
 
+  let overviewOt = null, ovM = 'month', ovA = '';
+  function shiftAnchor(a, m, dir) {
+    const d = new Date(a + 'T00:00:00Z');
+    if (m === 'day') d.setUTCDate(d.getUTCDate() + dir); else if (m === 'week') d.setUTCDate(d.getUTCDate() + 7 * dir);
+    else if (m === 'month') { d.setUTCDate(1); d.setUTCMonth(d.getUTCMonth() + dir); } else { d.setUTCDate(1); d.setUTCFullYear(d.getUTCFullYear() + dir); }
+    return d.toISOString().slice(0, 10);
+  }
+  function ovMode(m) { ovM = m; renderOverview(); }
+  function ovStep(dir) { ovA = shiftAnchor(ovA || nowBkk(), ovM, dir); renderOverview(); }
+  function ovSetAnchor(v) { if (v) { ovA = v; renderOverview(); } }
   function renderOverview() {
     if (!isUnlocked()) return;
-    const t = i18n[currentLang];
-    let sumAnnualPct = 0, countAnnual = 0;
-    let sumPersonalPct = 0, countPersonal = 0;
-    let sumSickPct = 0, countSick = 0;
-    let overCount = 0;
+    const t = i18n[currentLang]; if (!ovA) ovA = nowBkk();
+    byId('ovModes').querySelectorAll('button').forEach(b => { const on = b.dataset.m === ovM; b.classList.toggle('btn-primary', on); b.classList.toggle('btn-outline-primary', !on); });
+    byId('ovAnchor').value = ovA;
+    const [s, e] = otRange(ovM, ovA);
+    byId('ovRange').innerHTML = xE(s === e ? fmtD(s) : fmtD(s) + ' → ' + fmtD(e)) + (ovM === 'day' || ovM === 'week' ? ` <span class="wk-lbl ms-2">${weekLabel(s)}</span>` : '');
 
-    const summaryList = employeesData.map(emp => {
-      const stats = calcFairStats(emp);
-      if ((emp.leaves.annual?.quota || 0) > 0) { sumAnnualPct += stats.pctMap.annual; countAnnual++; }
-      if ((emp.leaves.personal?.quota || 0) > 0) { sumPersonalPct += stats.pctMap.personal; countPersonal++; }
-      if ((emp.leaves.sick?.quota || 0) > 0) { sumSickPct += stats.pctMap.sick; countSick++; }
+    // leave inside the period (from mp_leave_logs, 1 day = HOURS_PER_DAY h) as % of quota, averaged over the leave types like the person cards
+    const lv = new Map();
+    leaveLogs.forEach(r => { if (r.leave_date < s || r.leave_date > e) return; const o = lv.get(r.employee_id) || { annual: 0, personal: 0, sick: 0 }; if (o[r.leave_key] != null) o[r.leave_key] += (Number(r.hours) || 0) / HOURS_PER_DAY; lv.set(r.employee_id, o); });
+    const sumT = { annual: 0, personal: 0, sick: 0 }, cntT = { annual: 0, personal: 0, sick: 0 };
+    const lvList = employeesData.map(emp => {
+      const u = lv.get(emp.startRow) || { annual: 0, personal: 0, sick: 0 }; let sp = 0, act = 0;
+      QT.forEach(k => { const q = emp.leaves[k]?.quota || 0; if (q > 0) { const pc = u[k] / q * 100; sp += pc; act++; sumT[k] += pc; cntT[k]++; } });
+      return { name: emp.name, avg: act ? Math.round(sp / act * 10) / 10 : 0, days: u.annual + u.personal + u.sick, u };
+    }).sort((a, b) => b.avg - a.avg);
 
-      if (stats.pctMap.annual > 100 || stats.pctMap.personal > 100 || stats.pctMap.sick > 100) {
-        overCount++;
-      }
-      return { name: emp.name, avgPct: stats.avgPct, totalDays: stats.totalUsed };
-    }).sort((a, b) => b.avgPct - a.avgPct);
+    // OT inside the period per person (everyone listed, even with 0)
+    const om = new Map(employeesData.map(x => [ 'e' + x.startRow, { name: x.name, h: 0 } ]));
+    otRows.forEach(r => { if (r.ot_date < s || r.ot_date > e) return; const w = otWho(r), o = om.get(w.key) || { name: w.name, h: 0 }; o.h += Number(r.ot_hours) || 0; om.set(w.key, o); });
+    const otList = [...om.values()].sort((a, b) => b.h - a.h), otTotal = otList.reduce((a, x) => a + x.h, 0);
 
-    const teamAvgPct = summaryList.length ? Math.round(summaryList.reduce((acc, cur) => acc + cur.avgPct, 0) / summaryList.length) : 0;
-    const topPerson = summaryList.length ? `${summaryList[0].name} (${summaryList[0].avgPct}%)` : '-';
+    const teamAvg = lvList.length ? Math.round(lvList.reduce((a, x) => a + x.avg, 0) / lvList.length * 10) / 10 : 0;
+    const topL = lvList.length && lvList[0].avg > 0 ? `${lvList[0].name} (${lvList[0].avg}%)` : '-', topO = otList.length && otList[0].h > 0 ? `${otList[0].name} (${n2(otList[0].h)}h)` : '-';
+    const overCount = employeesData.filter(emp => { const st = calcFairStats(emp); return st.pctMap.annual > 100 || st.pctMap.personal > 100 || st.pctMap.sick > 100; }).length;
+    const kp = (lbl, v, cls) => `<div class="col-md col-6"><div class="emp-card p-3"><div class="text-muted small">${lbl}</div><div class="fs-5 fw-bold ${cls} text-truncate">${v}</div></div></div>`;
+    byId('kpiSection').innerHTML = kp(t.kpiTotalEmp, employeesData.length, 'text-primary') + kp(L('ลาเยอะสุด', 'Top leaver', '请假最多'), topL, 'text-danger') + kp(L('ดัชนีลาเฉลี่ยทีม', 'Team avg. leave', '团队平均请假'), teamAvg + '%', 'text-warning') +
+      kp(L('OT รวม (h)', 'Total OT (h)', '加班合计(小时)'), n2(otTotal), 'text-success') + kp(L('ทำ OT เยอะสุด', 'Top OT', '加班最多'), topO, 'text-success') + kp(t.kpiOverQuota, overCount, 'text-danger');
 
-    document.getElementById('kpiSection').innerHTML = `
-      <div class="col-md-3 col-6">
-        <div class="emp-card p-3">
-          <div class="text-muted small">${t.kpiTotalEmp}</div>
-          <div class="fs-4 fw-bold text-primary">${employeesData.length}</div>
-        </div>
-      </div>
-      <div class="col-md-3 col-6">
-        <div class="emp-card p-3">
-          <div class="text-muted small">${t.kpiTopLeaver}</div>
-          <div class="fs-5 fw-bold text-danger text-truncate">${topPerson}</div>
-        </div>
-      </div>
-      <div class="col-md-3 col-6">
-        <div class="emp-card p-3">
-          <div class="text-muted small">${t.kpiAvgLeave}</div>
-          <div class="fs-4 fw-bold text-warning">${teamAvgPct}%</div>
-        </div>
-      </div>
-      <div class="col-md-3 col-6">
-        <div class="emp-card p-3">
-          <div class="text-muted small">${t.kpiOverQuota}</div>
-          <div class="fs-4 fw-bold text-danger">${overCount}</div>
-        </div>
-      </div>
-    `;
+    byId('ovH1').textContent = L('เปรียบเทียบชั่วโมง OT รายคน', 'OT hours by person', '各人加班小时对比');
+    byId('ovP1').textContent = L('รวมชั่วโมง OT ในช่วงที่เลือก (มาก → น้อย)', 'Total OT hours in the selected period (high → low)', '所选期间加班小时（由多到少）');
+    byId('ovH2').textContent = L('เปรียบเทียบการใช้วันลา (%)', 'Leave usage by person (%)', '各人请假使用率（%）');
+    byId('ovP2').textContent = L('% ของโควต้า เฉลี่ยทุกประเภทลา เหมือนการ์ดรายคน · นับจาก Log วันลาในช่วงที่เลือก', 'Avg. % of quota over leave types, like the person cards · from leave log in the selected period', '占额度百分比（各假别平均），同个人卡片 · 按所选期间请假记录');
+    byId('ovH3').textContent = t.chartTypeTitle; byId('ovP3').textContent = L('ค่าเฉลี่ย % การใช้โควต้าแยกตามประเภท (ช่วงที่เลือก)', 'Avg. quota usage % by type (selected period)', '各假别平均额度使用率（所选期间）');
+    const hBox = n => Math.max(260, n * 26 + 50) + 'px';
+    byId('ovOtBox').style.height = hBox(otList.length); byId('ovLvBox').style.height = hBox(lvList.length);
 
+    if (overviewOt) overviewOt.destroy();
+    overviewOt = new Chart(byId('ovOtChart'), { type: 'bar', data: { labels: otList.map(x => x.name), datasets: [{ data: otList.map(x => n2(x.h)), backgroundColor: '#f59e0b', borderRadius: 6 }] },
+      options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ${c.raw} h` } } }, scales: { x: { beginAtZero: true, ticks: { callback: v => v + 'h' } } } } });
     if (overviewBar) overviewBar.destroy();
-    overviewBar = new Chart(document.getElementById('overviewBarChart'), {
-      type: 'bar',
-      data: {
-        labels: summaryList.map(x => x.name),
-        datasets: [{
-          label: L('ดัชนีการลาเฉลี่ย (%)', 'Avg. Leave Index (%)'),
-          data: summaryList.map(x => x.avgPct),
-          backgroundColor: summaryList.map(x => getBarColor(x.avgPct)),
-          borderRadius: 8
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: { callbacks: { label: (ctx) => { const item = summaryList[ctx.dataIndex]; return ` ${item.avgPct}% (${item.totalDays} ${t.days})`; } } }
-        },
-        scales: { y: { beginAtZero: true, max: 110, ticks: { callback: val => val + '%' } } }
-      }
-    });
-
-    const avgA = countAnnual ? Math.round(sumAnnualPct / countAnnual) : 0;
-    const avgP = countPersonal ? Math.round(sumPersonalPct / countPersonal) : 0;
-    const avgS = countSick ? Math.round(sumSickPct / countSick) : 0;
-
+    overviewBar = new Chart(byId('overviewBarChart'), { type: 'bar', data: { labels: lvList.map(x => x.name), datasets: [{ data: lvList.map(x => x.avg), backgroundColor: lvList.map(x => getBarColor(x.avg)), borderRadius: 6 }] },
+      options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => { const x = lvList[c.dataIndex]; return ` ${x.avg}% (${n2(x.days)} ${t.days})`; } } } }, scales: { x: { beginAtZero: true, ticks: { callback: v => v + '%' } } } } });
+    const av = k => cntT[k] ? Math.round(sumT[k] / cntT[k] * 10) / 10 : 0;
     if (overviewPie) overviewPie.destroy();
-    overviewPie = new Chart(document.getElementById('overviewPieChart'), {
-      type: 'doughnut',
-      data: {
-        labels: [`${t.typeAnnual} (${avgA}%)`, `${t.typePersonal} (${avgP}%)`, `${t.typeSick} (${avgS}%)`],
-        datasets: [{
-          data: [avgA, avgP, avgS],
-          backgroundColor: ['#3b82f6', '#a855f7', '#ec4899'],
-          borderWidth: 2
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { position: 'bottom' },
-          tooltip: { callbacks: { label: (ctx) => ` ${ctx.label}` } }
-        }
-      }
-    });
+    overviewPie = new Chart(byId('overviewPieChart'), { type: 'doughnut', data: { labels: [`${t.typeAnnual} (${av('annual')}%)`, `${t.typePersonal} (${av('personal')}%)`, `${t.typeSick} (${av('sick')}%)`], datasets: [{ data: [av('annual'), av('personal'), av('sick')], backgroundColor: ['#3b82f6', '#a855f7', '#ec4899'], borderWidth: 2 }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { label: c => ` ${c.label}` } } } } });
   }
 
   function resetNewYearLeave() {
@@ -1239,7 +1199,7 @@ async function refreshLogs() {
   const u = isUnlocked();     // locked (OT mode) never downloads leave / quota data
   [leaveLogs, otRows, quotaLogs, planRows] = await Promise.all([u ? xAll('mp_leave_logs') : [], xAll('mp_ot_logs'), u ? xAll('mp_quota_logs') : [], xAll('mp_ot_plans')]);
   customHols = await xAll('mp_custom_holidays').catch(() => customHols);
-  if (!otA) otA = otRows.reduce((m, r) => r.ot_date > m ? r.ot_date : m, '') || nowBkk();
+  if (!otA) otA = isUnlocked() ? (otRows.reduce((m, r) => r.ot_date > m ? r.ot_date : m, '') || nowBkk()) : nowBkk();
 }
 function renderAllViews() { if (isUnlocked()) { renderCards(); renderOverview(); } if (!byId('viewOT').classList.contains('d-none')) renderOT(); }
 async function reloadAll() { employeesData = await loadLeaveData(isUnlocked()); await refreshLogs(); renderAllViews(); }
@@ -1378,7 +1338,7 @@ const DM_FORM = {
   editEmp: () => `<label class="form-label small fw-bold mb-0">${L('พนักงาน', 'Employee')}</label><select id="eeSel" class="form-select form-select-sm mb-2" onchange="eeFill()">${empOpts()}</select><div class="row g-2"><div class="col-5"><label class="form-label small fw-bold mb-0">${tx('lblEmpId')}</label><input id="eeCode" class="form-control form-control-sm"></div><div class="col-7"><label class="form-label small fw-bold mb-0">${tx('lblName')}</label><input id="eeName" class="form-control form-control-sm"></div><div class="col-12"><label class="form-label small fw-bold mb-0">${tx('lblNote')}</label><input id="eeNote" class="form-control form-control-sm"></div><div class="col-12">${wsSelect('eeSched')}</div></div><button class="btn btn-primary btn-sm mt-3" onclick="saveEditEmpForm()">${tx('btnSave')}</button> <button class="btn btn-outline-secondary btn-sm mt-3" onclick="eeFull()">${L('เปิดหน้าแก้ไขเต็ม (รวมโควต้า/วันลาจริง)', 'Open full editor (quota / used)')}</button>`,
   quota: () => `<div id="qTable" class="table-responsive"></div><label class="form-label small mb-0">${tx('quotaNote')}</label><input id="qNote" class="form-control form-control-sm"><button class="btn btn-warning btn-sm fw-bold mt-2" onclick="saveQuotas()">${tx('btnSaveQuota')}</button><hr><h6 class="fw-bold">${tx('quotaHist')}</h6><div id="qHist" class="table-responsive small"></div>`,
   leave: () => `<div class="row g-2"><div class="col-md-6"><label class="form-label small mb-0">${L('ใคร (พนักงาน)', 'Who (employee)', '谁（员工）')}</label><select id="lvEmp" class="form-select form-select-sm"></select></div><div class="col-md-6"><label class="form-label small mb-0">${L('วันไหน (วันที่ลา)', 'Date', '请假日期')}</label><input type="date" id="lvDate" class="form-control form-control-sm"></div><div class="col-md-6"><label class="form-label small mb-0">${L('ลาอะไร (ประเภทวันลา)', 'Leave type', '请假类别')}</label><select id="lvType" class="form-select form-select-sm"></select></div><div class="col-md-6"><label class="form-label small mb-0">${L('กี่ชั่วโมง (8 ชม. = 1 วัน)', 'Hours (8 h = 1 day)', '小时数（8小时=1天）')}</label><input type="number" id="lvHours" min="0" step="0.5" class="form-control form-control-sm"></div><div class="col-12"><label class="form-label small mb-0">${L('เหตุผล / หมายเหตุ', 'Reason / note', '原因 / 备注')}</label><textarea id="lvReason" rows="2" class="form-control form-control-sm"></textarea></div></div><button class="btn btn-success btn-sm mt-3" onclick="saveLeaveLog()">${tx('btnSaveLeave')}</button><hr><h6 class="fw-bold">${tx('leaveHist')}</h6><div id="lvHist" class="table-responsive small"></div>`,
-  ot: () => `<div class="row g-2"><div class="col-md-6"><label class="form-label small mb-0">${tx('fEmp')}</label><select id="otfEmp" class="form-select form-select-sm" onchange="otfAuto()">${empOpts()}</select></div><div class="col-md-6"><label class="form-label small mb-0">${L('วันที่ OT', 'OT date')}</label><input type="date" id="otfDate" class="form-control form-control-sm" onchange="otfAuto()"></div><div class="col-md-4"><label class="form-label small mb-0">${L('กะ', 'Shift', '班别')}</label><input id="otfShift" class="form-control form-control-sm" placeholder="${L('กะเช้า/Day', 'Day', '白班')}"></div><div class="col-md-4"><label class="form-label small mb-0">${L('ประเภทวัน', 'Day type')}</label><select id="otfDay" class="form-select form-select-sm"><option value="工作日">${otT('work')}</option><option value="休息日">${otT('rest')}</option><option value="节假日">${otT('hol')}</option></select></div><div class="col-md-4"><label class="form-label small mb-0">${L('ชั่วโมง OT', 'OT hours')}</label><input type="number" id="otfHours" min="0" step="0.5" class="form-control form-control-sm"></div><div class="col-md-4"><label class="form-label small mb-0">${L('ประเภท OT', 'OT type', '加班类型')}</label><input id="otfType" class="form-control form-control-sm" value="Usual"></div><div class="col-md-4"><label class="form-label small mb-0">${L('หมายเหตุ', 'Note', '备注')}</label><input id="otfNote" class="form-control form-control-sm"></div><div class="col-12"><label class="form-label small mb-0">${L('เหตุผล', 'Reason', '加班理由')}</label><input id="otfReason" class="form-control form-control-sm"></div></div><button class="btn btn-success btn-sm mt-3" onclick="saveOtForm()">${L('บันทึก OT', 'Save OT')}</button><hr><h6 class="fw-bold">${L('OT ล่าสุด', 'Recent OT')}</h6><div id="otHist" class="table-responsive small"></div>`
+  ot: () => `<div class="row g-2"><div class="col-md-6"><label class="form-label small mb-0">${tx('fEmp')}</label><select id="otfEmp" class="form-select form-select-sm" onchange="otfAuto()">${empOpts()}</select></div><div class="col-md-6"><label class="form-label small mb-0">${L('วันที่ OT', 'OT date')}</label><input type="date" id="otfDate" class="form-control form-control-sm" onchange="otfAuto()"></div><div class="col-md-4"><label class="form-label small mb-0">${L('กะ', 'Shift', '班别')}</label><input id="otfShift" class="form-control form-control-sm" placeholder="${L('กะเช้า/Day', 'Day', '白班')}"></div><div class="col-md-4"><label class="form-label small mb-0">${L('ประเภทวัน', 'Day type')}</label><select id="otfDay" class="form-select form-select-sm"><option value="工作日">${otT('work')}</option><option value="休息日">${otT('rest')}</option><option value="节假日">${otT('hol')}</option></select></div><div class="col-md-4"><label class="form-label small mb-0">${L('ชั่วโมง OT', 'OT hours')}</label><input type="number" id="otfHours" min="0" step="0.5" class="form-control form-control-sm"></div><div class="col-md-4"><label class="form-label small mb-0">${L('ประเภท OT', 'OT type', '加班类型')}</label><input id="otfType" class="form-control form-control-sm" value="Usual"></div><div class="col-md-4"><label class="form-label small mb-0">${L('หมายเหตุ', 'Note', '备注')}</label><input id="otfNote" class="form-control form-control-sm"></div><div class="col-12"><label class="form-label small mb-0">${L('เหตุผล', 'Reason', '加班理由')}</label><input id="otfReason" class="form-control form-control-sm"></div></div><button class="btn btn-success btn-sm mt-3" onclick="saveOtForm()">${L('บันทึก OT', 'Save OT')}</button>`
 };
 const DM_INIT = {
   addEmp: () => {}, delEmp: () => {}, editEmp: () => eeFill(),
@@ -1625,7 +1585,7 @@ DM_FIELDS.plan = [
   ['ot_type', 'ประเภท OT / OT type  加班类型', ['加班类型', 'ot_type', 'ot type']], ['note', 'หมายเหตุ / Noted  备注', ['备注', 'note', 'noted']], ['reason', 'เหตุผล / Reasons  加班理由', ['加班理由', 'reason', 'reasons']]
 ];
 DM_NEED.plan = m => (m.emp_code < 0 && m.emp_name < 0) || !(m._dates && m._dates.length) ? L('ต้องจับคู่ รหัส/ชื่อ และเลือกคอลัมน์วันที่อย่างน้อย 1 คอลัมน์', 'Map ID/name and select at least one date column') : '';
-DM_FORM.plan = () => `<div class="row g-2 mb-2 align-items-end"><div class="col-auto"><label class="form-label small mb-0">${L('เลือกวันที่ในสัปดาห์ (จ.–อา.)', 'Pick any date in the week (Mon–Sun)', '选择该周任意日期（周一至周日）')}</label><input type="date" id="plStart" class="form-control form-control-sm" onchange="planWeekChange()"></div><div class="col-auto"><button class="btn btn-outline-secondary btn-sm" onclick="planLoadWeek()">${L('โหลดแผนที่มีอยู่', 'Load existing plan')}</button> <button class="btn btn-outline-primary btn-sm" onclick="planAddRow()">＋ ${L('เพิ่มแถว', 'Add row')}</button> ${isUnlocked() ? `<button class=\"btn btn-outline-primary btn-sm\" onclick=\"planAddDay()\">＋ ${L('วัน', 'Day', '天')}</button> <button class=\"btn btn-outline-danger btn-sm\" onclick=\"planDelDay()\">− ${L('วัน', 'Day', '天')}</button>` : ''}</div></div><div class="small text-muted mb-1">${isUnlocked() ? L('แก้ไขได้อิสระ: เพิ่ม/ลดวัน แก้วันที่ในหัวตาราง ใส่หมายเหตุได้ทุกวัน', 'Flexible: add/remove days, edit dates in the header, add notes', '可自由编辑：增减天数、修改表头日期、添加备注') : L('ลงแพลนได้เฉพาะ ศุกร์ / เสาร์ / อาทิตย์ และวันหยุดกำหนดเอง · ช่องสีเทา = ปิด', 'Plans only on Fri / Sat / Sun and custom holidays · grey = closed', '仅限周五/周六/周日及自定义假日 · 灰色=关闭')}</div><div id="plGrid" class="table-responsive"></div><div class="small text-muted">${L('ใส่ 0 = ลบแผนวันนั้น · เว้นว่าง = ไม่เปลี่ยน', '0 = remove that day\'s plan · blank = unchanged')}</div><button class="btn btn-success btn-sm mt-2" onclick="savePlanForm()">${L('บันทึกแผน OT', 'Save OT plan')}</button><hr><h6 class="fw-bold">${L('แพลนที่ลงแล้ว', 'Saved plan', '已录入计划')}</h6><div id="plHist" class="table-responsive small"></div>`;
+DM_FORM.plan = () => `<div class="row g-2 mb-2 align-items-end"><div class="col-auto"><label class="form-label small mb-0">${L('เลือกวันที่ในสัปดาห์ (จ.–อา.)', 'Pick any date in the week (Mon–Sun)', '选择该周任意日期（周一至周日）')}</label><input type="date" id="plStart" class="form-control form-control-sm" onchange="planWeekChange()"></div><div class="col-auto"><button class="btn btn-outline-secondary btn-sm" onclick="planLoadWeek()">${L('โหลดแผนที่มีอยู่', 'Load existing plan')}</button> <button class="btn btn-outline-primary btn-sm" onclick="planAddRow()">＋ ${L('เพิ่มแถว', 'Add row')}</button> ${isUnlocked() ? `<button class=\"btn btn-outline-primary btn-sm\" onclick=\"planAddDay()\">＋ ${L('วัน', 'Day', '天')}</button> <button class=\"btn btn-outline-danger btn-sm\" onclick=\"planDelDay()\">− ${L('วัน', 'Day', '天')}</button>` : ''}</div></div><div class="small text-muted mb-1">${isUnlocked() ? L('แก้ไขได้อิสระ: เพิ่ม/ลดวัน แก้วันที่ในหัวตาราง ใส่หมายเหตุได้ทุกวัน', 'Flexible: add/remove days, edit dates in the header, add notes', '可自由编辑：增减天数、修改表头日期、添加备注') : L('ลงแพลนได้เฉพาะ ศุกร์ / เสาร์ / อาทิตย์ และวันหยุดกำหนดเอง · ช่องสีเทา = ปิด', 'Plans only on Fri / Sat / Sun and custom holidays · grey = closed', '仅限周五/周六/周日及自定义假日 · 灰色=关闭')}</div><div id="plGrid" class="table-responsive"></div><div class="small text-muted">${L('ใส่ 0 = ลบแผนวันนั้น · เว้นว่าง = ไม่เปลี่ยน', '0 = remove that day\'s plan · blank = unchanged')}</div><button class="btn btn-success btn-sm mt-2" onclick="savePlanForm()">${L('บันทึกแผน OT', 'Save OT plan')}</button>`;
 DM_INIT.plan = () => { byId('plStart').value = mondayOf(nowBkk()); planDays = planWeekDays(byId('plStart').value); planGrid = [planBlank()]; planGridRender(); renderPlanHist(); };
 const empOf = v => employeesData.find(x => String(x.startRow) === String(v));
 function planAutoFill(i) { const e = empOf(planGrid[i].emp); planGrid[i].h = planDays.map(d => e && planCellOk(e, d) && planHoursFor(e.schedule, d) ? String(planHoursFor(e.schedule, d)) : ''); }
@@ -1808,7 +1768,7 @@ function otRangeTxt(s, e, custom) {
 function otMode(m) { otM = m; renderOT(); }
 async function loadOT() {
   try { otRows = await xAll('mp_ot_logs'); } catch (e) { alert('Error: ' + e.message); otRows = []; }
-  if (!otA) otA = otRows.reduce((m, r) => r.ot_date > m ? r.ot_date : m, '') || nowBkk();
+  if (!otA) otA = isUnlocked() ? (otRows.reduce((m, r) => r.ot_date > m ? r.ot_date : m, '') || nowBkk()) : nowBkk();
   renderOT();
 }
 async function otDel(id) {
@@ -1817,12 +1777,24 @@ async function otDel(id) {
   const { error } = await supabaseClient.from('mp_ot_logs').delete().eq('id', id);
   if (error) return alert(error.message); await loadOT(); renderCards(); renderOtHist();
 }
+function otOpenEntry() { openDataModal(otView === 'plan' ? 'plan' : 'ot'); }
+function renderOtLog() {                                   // before login: who has already entered data today (daily OT) / this week (plan)
+  byId('otAnchor').value = otA;
+  const [s, e] = otRange(otM, otA), plan = otView === 'plan', dk = plan ? 'plan_date' : 'ot_date', hk = plan ? 'plan_hours' : 'ot_hours';
+  byId('otRange').innerHTML = otRangeTxt(s, e, false);
+  const rows = (plan ? planRows : otRows).filter(r => r[dk] >= s && r[dk] <= e).sort((a, b) => a[dk].localeCompare(b[dk]) || otWho(a).name.localeCompare(otWho(b).name));
+  const ts = rows.some(r => r.created_at), fm = v => new Date(v).toLocaleString('en-GB', { timeZone: 'Asia/Bangkok', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  byId('otTable').innerHTML = rows.length
+    ? `<div class="wk-lbl mb-2">${L(`ลงแล้ว ${rows.length} รายการ · ${new Set(rows.map(r => otWho(r).key)).size} คน`, `${rows.length} records · ${new Set(rows.map(r => otWho(r).key)).size} people`, `已录入 ${rows.length} 条 · ${new Set(rows.map(r => otWho(r).key)).size} 人`)}</div><table class="table table-sm table-hover align-middle mb-0"><thead class="table-light"><tr><th>${L('วันที่', 'Date', '日期')}</th><th>${L('รหัส', 'ID', '工号')}</th><th>${L('ชื่อ', 'Name', '姓名')}</th><th>${L('กะ', 'Shift', '班别')}</th><th>${plan ? L('ประเภท OT', 'OT type', '加班类型') : L('ประเภทวัน', 'Day type')}</th><th class="text-end">h</th><th>${L('หมายเหตุ', 'Note', '备注')}</th>${ts ? `<th>${L('ลงเมื่อ', 'Entered', '录入时间')}</th>` : ''}</tr></thead><tbody>` +
+      rows.map(r => { const w = otWho(r); return `<tr><td>${fmtD(r[dk])} <span class="text-muted small">${wdName(r[dk])}</span></td><td>${xE(w.code)}</td><td>${xE(w.name)}</td><td>${xE(r.shift || '')}</td><td>${xE(plan ? (r.ot_type || '') : otT(dayKind(r.day_type)))}</td><td class="text-end fw-bold">${n2(Number(r[hk]) || 0)}</td><td class="small">${xE(r.note || '')}</td>${ts ? `<td class="small text-muted">${r.created_at ? fm(r.created_at) : ''}</td>` : ''}</tr>`; }).join('') + '</tbody></table>'
+    : `<div class="text-muted p-3">${plan ? L('สัปดาห์นี้ยังไม่มีใครลงแพลน OT', 'No OT plan entered for this week yet', '本周暂无加班计划') : L('วันนี้ยังไม่มีใครลง OT', 'No OT entered for this day yet', '当日暂无加班记录')}</div>`;
+}
 function renderOT() {
-  if (!isUnlocked()) { otM = 'day'; rFrom = ''; rTo = ''; }
-  const u0 = isUnlocked();   // before login: only the two entry buttons stay; summaries, tables, filters and views are hidden
-  [byId('otKpi'), byId('otTable').parentElement, byId('otViews').parentElement, byId('otModes').parentElement, byId('otAnchor').closest('.col-auto'), byId('otEmp').parentElement, byId('otRange')].forEach(el => el.classList.toggle('d-none', !u0));
-  if (!u0) return;
+  const u0 = isUnlocked();
+  if (!u0) { otM = otView === 'plan' ? 'week' : 'day'; rFrom = ''; rTo = ''; }
+  [byId('otKpi'), byId('otModes').parentElement, byId('otEmp').parentElement].forEach(el => el.classList.toggle('d-none', !u0));   // before login: no summaries / filters, only the log
   byId('otViews').querySelectorAll('button').forEach(b => { const on = b.dataset.v === otView; b.classList.toggle('btn-primary', on); b.classList.toggle('btn-outline-primary', !on); });
+  if (!u0) return renderOtLog();
   if (otView === 'plan') return renderPlan();
   byId('otAnchor').value = otA;
   byId('otModes').querySelectorAll('button').forEach(b => { const on = b.dataset.m === otM; b.classList.toggle('btn-primary', on); b.classList.toggle('btn-outline-primary', !on); });
@@ -1931,11 +1903,40 @@ function summaryRows() {                                  // per employee: leave
     return { e, ...a, lh: a.annual + a.personal + a.sick, oth: o.h, otn: o.n }; });
 }
 const dh = h => `${n2(h / HOURS_PER_DAY)}${L('ว', 'd')} <span class="text-muted small">(${n2(h)}h)</span>`;
+let sumPer = 'week', sumCharts = [];
+function sumSetPer(v) { sumPer = v; renderSummaryView(); }
+const MON_S = () => currentLang === 'th' ? ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'] : currentLang === 'zh' ? Array.from({ length: 12 }, (_, i) => (i + 1) + '月') : ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function otBuckets(per) {                                  // week: last 8 weeks · month: 12 months of this year · year: last 5 years
+  const today = nowBkk(), y = +today.slice(0, 4), out = [];
+  if (per === 'week') { const m = mondayOf(today); for (let i = 7; i >= 0; i--) { const st = addDays(m, -7 * i); out.push({ s: st, e: addDays(st, 6), label: L('ส.', 'W', '周') + weekInfo(st).no }); } }
+  else if (per === 'month') MON_S().forEach((lb, i) => out.push({ s: `${y}-${p2(i + 1)}-01`, e: new Date(Date.UTC(y, i + 1, 0)).toISOString().slice(0, 10), label: lb }));
+  else for (let i = 4; i >= 0; i--) out.push({ s: `${y - i}-01-01`, e: `${y - i}-12-31`, label: String(y - i) });
+  return out;
+}
 function renderSummaryView() {
-  const t = i18n[currentLang], rows = summaryRows(), sum = k => rows.reduce((a, r) => a + r[k], 0);
-  byId('viewSummary').innerHTML = `<div class="emp-card p-2"><div class="px-2 pt-1 small text-muted">${(rFrom || rTo) ? (rFrom || '…') + ' → ' + (rTo || '…') : L('ทุกช่วงเวลา', 'All time')} · ${L('วันลาจาก Log (1 วัน = ' + HOURS_PER_DAY + ' ชม.)', 'leave from log (1 day = ' + HOURS_PER_DAY + ' h)')}</div><div class="table-responsive"><table class="table table-sm table-hover align-middle mb-0"><thead class="table-light"><tr><th>${t.pdfThEmpId}</th><th>${t.pdfThName}</th><th class="text-end">${t.typeAnnual}</th><th class="text-end">${t.typePersonal}</th><th class="text-end">${t.typeSick}</th><th class="text-end">${L('รวมลา', 'Total leave')}</th><th class="text-end">OT (h)</th><th class="text-end">OT ${L('รายการ', 'rec.')}</th></tr></thead><tbody>` +
-    rows.map(r => `<tr><td>${xE(r.e.empId)}</td><td class="fw-medium">${xE(r.e.name)}</td><td class="text-end">${dh(r.annual)}</td><td class="text-end">${dh(r.personal)}</td><td class="text-end">${dh(r.sick)}</td><td class="text-end fw-bold">${dh(r.lh)}</td><td class="text-end fw-bold">${n2(r.oth)}</td><td class="text-end">${r.otn}</td></tr>`).join('') +
-    `</tbody><tfoot class="table-light fw-bold"><tr><td colspan="2">${L('รวมทั้งหมด', 'Total')}</td><td class="text-end">${dh(sum('annual'))}</td><td class="text-end">${dh(sum('personal'))}</td><td class="text-end">${dh(sum('sick'))}</td><td class="text-end">${dh(sum('lh'))}</td><td class="text-end">${n2(sum('oth'))}</td><td class="text-end">${sum('otn')}</td></tr></tfoot></table></div></div>`;
+  sumCharts.forEach(c => c.destroy()); sumCharts = [];
+  const t = i18n[currentLang], names = { annual: t.typeAnnual, personal: t.typePersonal, sick: t.typeSick }, cols = { annual: '#3b82f6', personal: '#a855f7', sick: '#ec4899' };
+  const bk = otBuckets(sumPer), lv = new Map(), ot = new Map();
+  leaveLogs.forEach(r => { if (!inRg(r.leave_date)) return; const o = lv.get(r.employee_id) || { n: 0, annual: 0, personal: 0, sick: 0 }; o.n++; if (o[r.leave_key] != null) o[r.leave_key]++; lv.set(r.employee_id, o); });
+  otRows.forEach(r => { if (r.employee_id == null) return; const i = bk.findIndex(b => r.ot_date >= b.s && r.ot_date <= b.e); if (i < 0) return;
+    const o = ot.get(r.employee_id) || { h: bk.map(() => 0), n: 0 }; o.h[i] += Number(r.ot_hours) || 0; o.n++; ot.set(r.employee_id, o); });
+  const list = visibleEmps(), per = [['week', L('รายสัปดาห์', 'Weekly', '按周')], ['month', L('รายเดือน', 'Monthly', '按月')], ['year', L('รายปี', 'Yearly', '按年')]];
+  byId('viewSummary').innerHTML = `<div class="d-flex flex-wrap align-items-center gap-2 mb-3"><div class="small text-muted">${L('จำนวนครั้งที่ลา:', 'Leave count:', '请假次数：')} ${(rFrom || rTo) ? (rFrom ? fmtD(rFrom) : '…') + ' → ' + (rTo ? fmtD(rTo) : '…') : L('ทุกช่วงเวลา', 'All time', '全部时间')} · ${L('กราฟแท่ง = ชั่วโมง OT', 'columns = OT hours', '柱状图 = 加班小时')}</div>` +
+    `<div class="ms-auto d-flex align-items-center gap-2"><span class="small fw-bold">OT</span><div class="btn-group btn-group-sm mp-toggle">${per.map(([k, l]) => `<button type="button" class="btn ${sumPer === k ? 'btn-primary' : 'btn-outline-primary'}" onclick="sumSetPer('${k}')">${l}</button>`).join('')}</div></div></div>` +
+    '<div class="row g-3">' + list.map((e, i) => { const a = lv.get(e.startRow) || { n: 0, annual: 0, personal: 0, sick: 0 }, o = ot.get(e.startRow) || { h: bk.map(() => 0), n: 0 }, tot = o.h.reduce((x, y) => x + y, 0);
+      return `<div class="col-md-6 col-xl-4"><div class="emp-card p-3 h-100"><div class="d-flex justify-content-between align-items-start gap-2"><div><span class="badge bg-secondary-subtle text-secondary-emphasis">${xE(e.empId)}</span> <span class="fw-bold">${xE(e.name)}</span></div><div class="small text-end"><b>${a.n}</b> ${L('ครั้ง', 'leaves', '次')}</div></div>` +
+      `<div class="row g-1 text-center mt-2">${QT.map(k => { const l = e.leaves[k] || { used: 0, quota: 0 }, pct = l.quota > 0 ? Math.round(l.used / l.quota * 100) : (l.used > 0 ? 100 : 0);
+        return `<div class="col-4"><div style="height:84px"><canvas id="sd_${i}_${k}"></canvas></div><div class="small fw-bold" style="color:${cols[k]}">${names[k]}</div><div class="small" style="color:${getBarColor(pct)}">${n2(l.used)}/${n2(l.quota)} ${L('วัน', 'd', '天')}</div><div class="small text-muted">${a[k]} ${L('ครั้ง', 'times', '次')}</div></div>`; }).join('')}</div>` +
+      `<hr class="my-2"><div class="small mb-1"><b>OT</b> ${n2(tot)} h <span class="text-muted">· ${o.n} ${L('ครั้ง', 'records', '次')}</span></div><div style="height:120px"><canvas id="so_${i}"></canvas></div></div></div>`; }).join('') + '</div>';
+  const ctr = txt => ({ id: 'ctr', afterDraw(c) { const { ctx, chartArea: ca } = c; ctx.save(); ctx.font = '600 13px Prompt, sans-serif'; ctx.fillStyle = getComputedStyle(document.body).color; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(txt, (ca.left + ca.right) / 2, (ca.top + ca.bottom) / 2); ctx.restore(); } });
+  list.forEach((e, i) => {
+    QT.forEach(k => { const cv = byId(`sd_${i}_${k}`); if (!cv) return; const l = e.leaves[k] || { used: 0, quota: 0 }, pct = l.quota > 0 ? Math.round(l.used / l.quota * 100) : (l.used > 0 ? 100 : 0), u = Math.min(l.used, l.quota || l.used), r = Math.max((l.quota || 0) - l.used, 0);
+      sumCharts.push(new Chart(cv, { type: 'doughnut', data: { datasets: [{ data: l.quota > 0 || l.used > 0 ? [u, r] : [0, 1], backgroundColor: [getBarColor(pct), 'rgba(150,150,150,0.18)'], borderWidth: 0 }] },
+        options: { cutout: '68%', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: false } } }, plugins: [ctr(pct + '%')] })); });
+    const cv = byId('so_' + i), o = ot.get(e.startRow) || { h: bk.map(() => 0) };
+    if (cv) sumCharts.push(new Chart(cv, { type: 'bar', data: { labels: bk.map(b => b.label), datasets: [{ data: o.h.map(n2), backgroundColor: '#f59e0b', borderRadius: 4 }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ${c.raw} h` } } }, scales: { y: { beginAtZero: true, ticks: { font: { size: 10 }, precision: 0 } }, x: { ticks: { font: { size: 10 }, maxRotation: 0 } } } } }));
+  });
 }
 function setLogKind(k) { logKind = k; renderLogView(); }
 function renderLogView() {
