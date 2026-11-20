@@ -107,13 +107,14 @@
 <body>
 
 <!-- PIN LOCK -->
-<div id="pinLock" style="position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;background:var(--body-bg)">
+<div id="pinLock" style="position:fixed;inset:0;z-index:10000;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.55)">
   <div class="emp-card p-4 text-center" style="width:300px">
     <i class="bi bi-lock-fill fs-2 text-primary"></i>
     <h6 class="fw-bold my-2" data-i18n="pinTitle">กรุณาใส่รหัสผ่าน</h6>
     <input type="password" id="pinInput" class="form-control text-center" onkeydown="if(event.key==='Enter')tryUnlock()" autofocus>
     <div id="pinMsg" class="text-danger small mt-1"></div>
     <button class="btn btn-primary btn-sm w-100 mt-2" onclick="tryUnlock()" data-i18n="pinGo">เข้าสู่ระบบ</button>
+    <button class="btn btn-link btn-sm w-100" onclick="byId('pinLock').style.display='none'" data-i18n="btnCancel">ยกเลิก</button>
   </div>
 </div>
 
@@ -150,27 +151,22 @@
           <i class="bi bi-file-earmark-arrow-down-fill"></i> <span data-i18n="menuExport">Export</span>
         </button>
         <ul class="dropdown-menu">
-          <li><a class="dropdown-item" href="#" onclick="exportExcel()"><i class="bi bi-file-earmark-excel text-success me-2"></i> <span data-i18n="exExcel">ดาวน์โหลด Excel (XLSX)</span></a></li>
+          <li><a class="dropdown-item" href="#" onclick="exportExcel(); return false;"><i class="bi bi-file-earmark-excel text-success me-2"></i> <span data-i18n="exExcel">ดาวน์โหลด Excel (ทุกแท็บ/ทุกมุมมอง)</span></a></li>
           <li><hr class="dropdown-divider"></li>
-          <li><a class="dropdown-item" href="#" onclick="previewPdf()"><i class="bi bi-file-earmark-pdf text-danger me-2"></i> <span data-i18n="exPdf">พรีวิวและเซฟ PDF (แนวตั้ง)</span></a></li>
+          <li><a class="dropdown-item" href="#" onclick="previewPdf('current'); return false;"><i class="bi bi-file-earmark-pdf text-danger me-2"></i> <span data-i18n="exPdf">PDF — หน้าที่กำลังดู</span></a></li>
+          <li><a class="dropdown-item" href="#" onclick="previewPdf('all'); return false;"><i class="bi bi-files text-danger me-2"></i> <span data-i18n="exPdfAll">PDF — ทุกแท็บ/ทุกมุมมอง</span></a></li>
         </ul>
       </div>
 
-      <button class="btn btn-primary btn-sm" onclick="openEntryModal()">
-        <i class="bi bi-journal-plus"></i> <span data-i18n="btnEntry">บันทึกข้อมูล</span>
+      <button class="btn btn-success btn-sm fw-bold" onclick="openDataModal()">
+        <i class="bi bi-plus-lg"></i> <span data-i18n="btnAddData">＋ Add Data</span>
       </button>
-      <button class="btn btn-outline-warning btn-sm" onclick="openQuotaModal()">
-        <i class="bi bi-ui-checks-grid"></i> <span data-i18n="btnQuota">โควต้า</span>
-      </button>
-      <button class="btn btn-success btn-sm" onclick="openAddModal()">
-        <i class="bi bi-person-plus-fill"></i> <span data-i18n="btnAdd">เพิ่มพนักงาน</span>
-      </button>
-      <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#settingsModal">
+      <button id="btnSettingsTop" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#settingsModal">
         <i class="bi bi-sliders"></i> <span data-i18n="btnSettings">ตั้งค่า</span>
       </button>
 
       <button class="btn btn-outline-info btn-sm fw-bold" onclick="toggleLang()" id="btnLang">EN</button>
-      <button class="btn btn-outline-secondary btn-sm" onclick="lockApp()" title="Lock"><i class="bi bi-lock-fill"></i></button>
+      <button id="btnLock" class="btn btn-outline-secondary btn-sm" onclick="lockToggle()" title="Unlock (PIN)"><i class="bi bi-unlock-fill"></i></button>
       <button class="btn btn-outline-warning btn-sm" onclick="toggleTheme()" id="btnTheme">
         <i class="bi bi-moon-stars-fill"></i>
       </button>
@@ -179,29 +175,55 @@
 </nav>
 
 <div class="container-fluid px-3 py-3">
-  <div id="filterBar" class="row g-2 mb-3 align-items-center">
-    <div class="col-md-4">
-      <div class="input-group input-group-sm">
-        <span class="input-group-text"><i class="bi bi-search"></i></span>
-        <input type="text" id="searchInput" class="form-control" placeholder="ค้นหาชื่อ หรือ รหัสพนักงาน..." onkeyup="renderCards()">
-      </div>
-    </div>
-    <div class="col-md-3">
-      <select id="sortSelect" class="form-select form-select-sm" onchange="renderCards()">
-        <option value="default" data-i18n="sortDefault">เรียงตามลำดับตาราง</option>
-        <option value="mostUsed" data-i18n="sortMost">ลาบ่อยสุด (ดัชนีการลา % สูง -> ต่ำ)</option>
-        <option value="leastUsed" data-i18n="sortLeast">ลาน้อยสุด (ดัชนีการลา % ต่ำ -> สูง)</option>
-      </select>
-    </div>
-    <div class="col-md-5 text-md-end small text-muted">
-      <span class="me-2"><i class="bi bi-circle-fill" style="color:var(--color-low)"></i> <span data-i18n="legendLow">&lt; 50% ปกติ</span></span>
-      <span class="me-2"><i class="bi bi-circle-fill" style="color:var(--color-mid)"></i> <span data-i18n="legendMid">50-79% เฝ้าระวัง</span></span>
-      <span><i class="bi bi-circle-fill" style="color:var(--color-high)"></i> <span data-i18n="legendHigh">&ge; 80% ใกล้หมด/เกิน</span></span>
-    </div>
+
+  <!-- ช่วงวันที่ (ใช้กับ OT และ สรุป/Log วันลา) -->
+  <div id="rangeBar" class="row g-2 mb-3 align-items-center d-none">
+    <div class="col-auto small fw-bold"><i class="bi bi-calendar-range"></i> <span data-i18n="rgTitle">ช่วงวันที่</span></div>
+    <div class="col-auto"><input type="date" id="rgFrom" class="form-control form-control-sm" onchange="rangeChanged()"></div>
+    <div class="col-auto">→</div>
+    <div class="col-auto"><input type="date" id="rgTo" class="form-control form-control-sm" onchange="rangeChanged()"></div>
+    <div class="col-auto"><button class="btn btn-sm btn-outline-secondary" onclick="rangeClear()" data-i18n="rgClear">ล้างช่วงวันที่</button></div>
+    <div class="col small text-muted" id="rgHint"></div>
   </div>
 
-  <div id="viewCards" class="row g-3"></div>
+  <!-- แท็บ: รายบุคคล (การ์ด / ตาราง / สรุปรายคน / Log) -->
+  <div id="viewLeave">
+    <div id="filterBar" class="row g-2 mb-3 align-items-center">
+      <div class="col-md-3">
+        <div class="input-group input-group-sm">
+          <span class="input-group-text"><i class="bi bi-search"></i></span>
+          <input type="text" id="searchInput" class="form-control" placeholder="ค้นหาชื่อ หรือ รหัสพนักงาน..." onkeyup="renderCards()">
+        </div>
+      </div>
+      <div class="col-md-3">
+        <select id="sortSelect" class="form-select form-select-sm" onchange="renderCards()">
+          <option value="default" data-i18n="sortDefault">เรียงตามลำดับตาราง</option>
+          <option value="mostUsed" data-i18n="sortMost">ลาบ่อยสุด (ดัชนีการลา % สูง -> ต่ำ)</option>
+          <option value="leastUsed" data-i18n="sortLeast">ลาน้อยสุด (ดัชนีการลา % ต่ำ -> สูง)</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <div class="btn-group btn-group-sm" id="lvViews">
+          <button type="button" class="btn btn-primary" data-v="cards" onclick="lvSetView('cards')"><i class="bi bi-grid-fill"></i> <span data-i18n="vwCards">การ์ด</span></button>
+          <button type="button" class="btn btn-outline-primary" data-v="table" onclick="lvSetView('table')"><i class="bi bi-table"></i> <span data-i18n="vwTable">ตาราง</span></button>
+          <button type="button" class="btn btn-outline-primary" data-v="summary" onclick="lvSetView('summary')"><i class="bi bi-people-fill"></i> <span data-i18n="vwSummary">สรุปรายคน</span></button>
+          <button type="button" class="btn btn-outline-primary" data-v="log" onclick="lvSetView('log')"><i class="bi bi-journal-text"></i> Log</button>
+        </div>
+      </div>
+      <div class="col-md-3 text-md-end small text-muted">
+        <span class="me-2"><i class="bi bi-circle-fill" style="color:var(--color-low)"></i> <span data-i18n="legendLow">&lt; 50% ปกติ</span></span>
+        <span class="me-2"><i class="bi bi-circle-fill" style="color:var(--color-mid)"></i> <span data-i18n="legendMid">50-79% เฝ้าระวัง</span></span>
+        <span><i class="bi bi-circle-fill" style="color:var(--color-high)"></i> <span data-i18n="legendHigh">&ge; 80% ใกล้หมด/เกิน</span></span>
+      </div>
+    </div>
 
+    <div id="viewCards" class="row g-3"></div>
+    <div id="viewTable" class="d-none"></div>
+    <div id="viewSummary" class="d-none"></div>
+    <div id="viewLog" class="d-none"></div>
+  </div>
+
+  <!-- แท็บ: ภาพรวมเปรียบเทียบ -->
   <div id="viewOverview" class="d-none">
     <div class="row g-3 mb-4" id="kpiSection"></div>
     <div class="row g-4">
@@ -224,9 +246,16 @@
         </div>
       </div>
     </div>
+  </div>
 
+  <!-- แท็บ: OT -->
   <div id="viewOT" class="d-none">
     <div class="row g-2 mb-3 align-items-center">
+      <div class="col-auto"><div class="btn-group btn-group-sm" id="otViews">
+        <button class="btn btn-primary" data-v="actual" onclick="otSetView('actual')" data-i18n="otActual">OT จริง</button>
+        <button class="btn btn-outline-primary" data-v="plan" onclick="otSetView('plan')" data-i18n="otPlan">แผน OT</button>
+      </div></div>
+      <div class="col-auto"><button class="btn btn-success btn-sm" onclick="openDataModal('ot')">＋ <span data-i18n="btnOtDaily">ลง OT ประจำวัน</span></button> <button class="btn btn-outline-success btn-sm" onclick="openDataModal('plan')">＋ <span data-i18n="btnOtPlan">ลงแพลน OT รายสัปดาห์</span></button></div>
       <div class="col-auto"><div class="btn-group btn-group-sm" id="otModes">
         <button class="btn btn-primary" data-m="day" onclick="otMode('day')" data-i18n="otDay">รายวัน</button>
         <button class="btn btn-outline-primary" data-m="week" onclick="otMode('week')" data-i18n="otWeek">รายสัปดาห์</button>
@@ -244,6 +273,7 @@
     <div class="row g-3 mb-3" id="otKpi"></div>
     <div class="emp-card p-3"><div class="table-responsive" id="otTable"></div></div>
   </div>
+
 </div>
 
 <!-- MODAL: พรีวิว PDF แนวตั้ง -->
@@ -337,64 +367,6 @@
   </div>
 </div>
 
-<!-- Modal เพิ่มพนักงาน -->
-<div class="modal fade" id="addModal" tabindex="-1">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title fw-bold" data-i18n="modalAddTitle">เพิ่มพนักงานใหม่</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <div class="row g-2 mb-3">
-          <div class="col-5">
-            <label class="form-label small fw-bold" data-i18n="lblEmpId">รหัสพนักงาน</label>
-            <input type="text" id="addEmpId" class="form-control form-control-sm" placeholder="เช่น C26999">
-          </div>
-          <div class="col-7">
-            <label class="form-label small fw-bold" data-i18n="lblName">ชื่อพนักงาน</label>
-            <input type="text" id="addName" class="form-control form-control-sm" placeholder="ชื่อพนักงาน">
-          </div>
-        </div>
-        <table class="table table-sm table-bordered text-center align-middle">
-          <thead class="table-light">
-            <tr>
-              <th data-i18n="colType">ประเภทการลา</th>
-              <th data-i18n="colQuota">โควต้า (วัน)</th>
-              <th data-i18n="colUsed">ลาจริงเริ่มต้น</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td class="text-start" data-i18n="typeAnnual">ลาพักร้อน</td>
-              <td><input type="number" id="addAnnualQ" class="form-control form-control-sm text-center" value="6"></td>
-              <td><input type="number" id="addAnnualU" class="form-control form-control-sm text-center" value="0"></td>
-            </tr>
-            <tr>
-              <td class="text-start" data-i18n="typePersonal">ลากิจ</td>
-              <td><input type="number" id="addPersonalQ" class="form-control form-control-sm text-center" value="3"></td>
-              <td><input type="number" id="addPersonalU" class="form-control form-control-sm text-center" value="0"></td>
-            </tr>
-            <tr>
-              <td class="text-start" data-i18n="typeSick">ลาป่วย</td>
-              <td><input type="number" id="addSickQ" class="form-control form-control-sm text-center" value="30"></td>
-              <td><input type="number" id="addSickU" class="form-control form-control-sm text-center" value="0"></td>
-            </tr>
-          </tbody>
-        </table>
-        <div>
-          <label class="form-label small fw-bold" data-i18n="lblNote">โน้ตเพิ่มเติม</label>
-          <input type="text" id="addNote" class="form-control form-control-sm">
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal" data-i18n="btnCancel">ยกเลิก</button>
-        <button type="button" class="btn btn-success btn-sm" onclick="saveNewEmployee()" data-i18n="btnAddConfirm">เพิ่มข้อมูล</button>
-      </div>
-    </div>
-  </div>
-</div>
-
 <!-- Modal ตั้งค่า -->
 <div class="modal fade" id="settingsModal" tabindex="-1">
   <div class="modal-dialog">
@@ -452,49 +424,18 @@
   </div>
 </div>
 
-<!-- MODAL: บันทึกข้อมูล (ฟอร์มลา / นำเข้า OT) -->
-<div class="modal fade" id="entryModal" tabindex="-1">
-  <div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content">
-    <div class="modal-header"><h5 class="modal-title fw-bold" data-i18n="entTitle">บันทึกข้อมูลการลา / OT</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+<!-- MODAL: ＋ Add Data (เพิ่ม/ลบ/แก้พนักงาน · โควต้า · การลา · OT  ×  ฟอร์ม / Paste / ไฟล์) -->
+<div class="modal fade" id="dataModal" tabindex="-1">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable"><div class="modal-content">
+    <div class="modal-header"><h5 class="modal-title fw-bold"><i class="bi bi-plus-lg"></i> <span data-i18n="dmTitle">＋ Add Data</span></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
     <div class="modal-body">
-      <ul class="nav nav-tabs mb-3">
-        <li class="nav-item"><button type="button" class="nav-link active" data-bs-toggle="tab" data-bs-target="#entLeave" data-i18n="entTabLeave">ฟอร์มการลา</button></li>
-        <li class="nav-item"><button type="button" class="nav-link" data-bs-toggle="tab" data-bs-target="#entOT" data-i18n="entTabOT">นำเข้า OT (ไฟล์)</button></li>
-      </ul>
-      <div class="tab-content">
-        <div class="tab-pane fade show active" id="entLeave">
-          <div class="row g-2">
-            <div class="col-md-6"><label class="form-label small mb-0" data-i18n="fEmp">พนักงาน</label><select id="lvEmp" class="form-select form-select-sm"></select></div>
-            <div class="col-md-6"><label class="form-label small mb-0" data-i18n="fDate">วันที่ลา</label><input type="date" id="lvDate" class="form-control form-control-sm"></div>
-            <div class="col-md-6"><label class="form-label small mb-0" data-i18n="fType">ประเภทการลา</label><select id="lvType" class="form-select form-select-sm"></select></div>
-            <div class="col-md-6"><label class="form-label small mb-0" data-i18n="fHours">ชั่วโมงที่ลา</label><input type="number" id="lvHours" min="0" step="0.5" class="form-control form-control-sm"></div>
-            <div class="col-12"><label class="form-label small mb-0" data-i18n="fReason">เหตุผลในการลา</label><textarea id="lvReason" rows="2" class="form-control form-control-sm"></textarea></div>
-          </div>
-          <button class="btn btn-success btn-sm mt-3" onclick="saveLeaveLog()" data-i18n="btnSaveLeave">บันทึกการลา</button>
-          <hr><h6 class="fw-bold" data-i18n="leaveHist">ประวัติการลาล่าสุด</h6><div id="lvHist" class="table-responsive small"></div>
-        </div>
-        <div class="tab-pane fade" id="entOT">
-          <label class="form-label small mb-0" data-i18n="otFile">ไฟล์ .xlsx / .csv</label>
-          <input type="file" id="otFile" class="form-control form-control-sm" accept=".xlsx,.xls,.csv" onchange="otReadFile(this)">
-          <div id="otMap" class="mt-3"></div>
-        </div>
+      <div class="row g-2 mb-3">
+        <div class="col-md-5"><label class="form-label small fw-bold mb-0" data-i18n="dmModeLbl">โหมด</label><select id="dmMode" class="form-select form-select-sm" onchange="dmSetMode(this.value)"></select></div>
+        <div class="col-md-7"><label class="form-label small fw-bold mb-0" data-i18n="dmMethodLbl">ช่องทางป้อนข้อมูล</label><div class="btn-group btn-group-sm w-100" id="dmMethods"></div></div>
       </div>
-    </div>
-  </div></div>
-</div>
-
-<!-- MODAL: จัดการโควต้า -->
-<div class="modal fade" id="quotaModal" tabindex="-1">
-  <div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content">
-    <div class="modal-header"><h5 class="modal-title fw-bold" data-i18n="quotaTitle">จัดการโควต้าวันลา</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-    <div class="modal-body">
-      <div id="qTable" class="table-responsive"></div>
-      <label class="form-label small mb-0" data-i18n="quotaNote">หมายเหตุ (เก็บใน Log)</label><input id="qNote" class="form-control form-control-sm">
-      <hr><h6 class="fw-bold" data-i18n="quotaHist">ประวัติการแก้ไขโควต้า</h6><div id="qHist" class="table-responsive small"></div>
-    </div>
-    <div class="modal-footer">
-      <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal" data-i18n="btnCancel">ยกเลิก</button>
-      <button type="button" class="btn btn-warning btn-sm fw-bold" onclick="saveQuotas()" data-i18n="btnSaveQuota">บันทึกโควต้า</button>
+      <div id="dmMsg"></div>
+      <div id="dmBody"></div>
+      <div id="dmMap" class="mt-3"></div>
     </div>
   </div></div>
 </div>
@@ -510,10 +451,10 @@ const HOURS_PER_DAY = 8;          // ชั่วโมง/วัน ใช้�
 const LEAVE_LABELS = { annual: 'ลาพักร้อน', personal: 'ลากิจ', sick: 'ลาป่วย' };
 const chk = r => { if (r.error) throw r.error; return r.data; };
 
-async function loadLeaveData() {
+async function loadLeaveData(withLeaves = true) {
   const [emps, leaves] = await Promise.all([
     supabaseClient.from('mp_employees').select('*').order('id').then(chk),
-    supabaseClient.from('mp_leaves').select('*').order('id').then(chk)
+    withLeaves ? supabaseClient.from('mp_leaves').select('*').order('id').then(chk) : Promise.resolve([])
   ]);
   return emps.map(e => {
     const lv = {};
@@ -664,7 +605,8 @@ async function loadLeaveData() {
 
   window.onload = () => {
     loadColorsFromStorage();
-    if (isUnlocked()) fetchData();
+    applyMode();
+    fetchData();
   };
 
   function showLoader(show, text = 'กำลังประมวลผล...') {
@@ -675,9 +617,9 @@ async function loadLeaveData() {
   async function fetchData() {
   showLoader(true, currentLang === 'th' ? 'กำลังดึงข้อมูลจาก Supabase...' : 'Loading...');
   try {
-    employeesData = await loadLeaveData();
-    renderCards();
-    renderOverview();
+    await reloadAll();
+    applyMode();
+    switchTab(isUnlocked() ? 'cards' : 'ot');
   } catch (err) {
     alert('Error fetching data: ' + err.message);
   } finally {
@@ -693,7 +635,9 @@ async function callGasApi(action, payload) {
     const types = ['annual', 'personal', 'sick'];
     const qlog = quotaDiffs(action, payload);
 
+    const dupId = (id, me) => employeesData.some(e => e.startRow !== me && String(e.empId).trim().toLowerCase() === String(id).trim().toLowerCase());
     if (action === 'updateEmployee') {
+      if (dupId(payload.empId, payload.startRow)) throw new Error(L('รหัสพนักงานซ้ำ', 'Duplicate employee ID'));
       await db.from('mp_employees')
         .update({ emp_id: payload.empId, name: payload.name, note: payload.note })
         .eq('id', payload.startRow).then(chk);
@@ -703,14 +647,15 @@ async function callGasApi(action, payload) {
           .eq('id', payload.leaves[t].row).then(chk)));
 
     } else if (action === 'addEmployee') {
+      if (dupId(payload.empId, null)) throw new Error(L('รหัสพนักงานซ้ำ', 'Duplicate employee ID'));
       const emp = await db.from('mp_employees')
         .insert({ emp_id: payload.empId, name: payload.name, note: payload.note })
         .select().single().then(chk);
-      await db.from('mp_leaves').insert([
+      try { await db.from('mp_leaves').insert([
         { employee_id: emp.id, leave_key: 'annual',   label: LEAVE_LABELS.annual,   quota: Number(payload.annualQuota),   used: Number(payload.annualUsed) },
         { employee_id: emp.id, leave_key: 'personal', label: LEAVE_LABELS.personal, quota: Number(payload.personalQuota), used: Number(payload.personalUsed) },
         { employee_id: emp.id, leave_key: 'sick',     label: LEAVE_LABELS.sick,     quota: Number(payload.sickQuota),     used: Number(payload.sickUsed) }
-      ]).then(chk);
+      ]).then(chk); } catch (e) { await db.from('mp_employees').delete().eq('id', emp.id); throw e; }
 
     } else if (action === 'deleteEmployee') {
       await db.from('mp_leaves').delete().eq('employee_id', payload).then(chk);
@@ -728,8 +673,8 @@ async function callGasApi(action, payload) {
 
     if (qlog.length) { try { await db.from('mp_quota_logs').insert(qlog).then(chk); } catch (e) { console.warn('quota log', e); } }
     employeesData = await loadLeaveData();
-    renderCards();
-    renderOverview();
+    if (action === 'deleteEmployee' || qlog.length) { try { await refreshLogs(); } catch (e) { console.warn(e); } }
+    renderAllViews();
   } catch (err) {
     alert('Error saving data: ' + err.message);
   } finally {
@@ -780,16 +725,14 @@ async function callGasApi(action, payload) {
     const pct = q > 0 ? Math.round((u / q) * 100) : (u > 0 ? 100 : 0);
     const visualPct = Math.min(pct, 100);
     const color = getBarColor(pct);
-    const overBadge = u > q ? `<span class="badge bg-danger p-1" style="font-size:9px;">+${u - q}</span>` : '';
+    const overBadge = u > q ? `<span class="badge bg-danger p-1" style="font-size:9px;">+${n2(u - q)}</span>` : '';
 
     return `
       <div class="mb-2">
         <div class="d-flex justify-content-between align-items-center compact-text mb-1">
           <span class="fw-medium text-truncate">${label} ${overBadge}</span>
           <div class="d-flex align-items-center gap-1">
-            <span class="fw-bold" style="font-size:11px;">${u}/${q}</span>
-            <button class="btn btn-outline-secondary btn-quick" onclick="handleDoubleClick(${empIndex}, '${typeKey}', -1, this)" title="กด 2 ครั้งเพื่อลด">-</button>
-            <button class="btn btn-outline-primary btn-quick" onclick="handleDoubleClick(${empIndex}, '${typeKey}', 1, this)" title="กด 2 ครั้งเพื่อเพิ่ม">+</button>
+            <span class="fw-bold" style="font-size:11px;">${n2(u)}/${n2(q)}</span>
           </div>
         </div>
         <div class="progress">
@@ -820,7 +763,7 @@ async function callGasApi(action, payload) {
     }
   }
 
-  function renderCards() {
+  function renderCardsView() {
     const container = document.getElementById('viewCards');
     const keyword = document.getElementById('searchInput').value.toLowerCase();
     const sortBy = document.getElementById('sortSelect').value;
@@ -934,6 +877,7 @@ async function callGasApi(action, payload) {
   let overviewPie = null;
 
   function renderOverview() {
+    if (!isUnlocked()) return;
     const t = i18n[currentLang];
     let sumAnnualPct = 0, countAnnual = 0;
     let sumPersonalPct = 0, countPersonal = 0;
@@ -1042,109 +986,6 @@ async function callGasApi(action, payload) {
     bootstrap.Modal.getInstance(document.getElementById('settingsModal')).hide();
   }
 
-  function exportExcel() {
-    let rows = [];
-    rows.push(["Employee Number", "Name", "Leave Type", "Quota", "Used", "Remaining", "Note"]);
-
-    employeesData.forEach(emp => {
-      ['annual', 'personal', 'sick'].forEach(type => {
-        const l = emp.leaves[type];
-        if (l) {
-          rows.push([ emp.empId, emp.name, l.label, l.quota, l.used, l.quota - l.used, emp.note || '' ]);
-        }
-      });
-    });
-
-    const ws = XLSX.utils.aoa_to_sheet(rows);
-    ws['!cols'] = [ { wch: 18 }, { wch: 22 }, { wch: 15 }, { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 30 } ];
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Leave Summary");
-    XLSX.writeFile(wb, "Employee_Leave_Report.xlsx");
-  }
-
-  function previewPdf() {
-    document.getElementById('reportDate').innerText = new Date().toLocaleDateString(currentLang === 'th' ? 'th-TH' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-    const t = i18n[currentLang];
-
-    let html = `
-      <table class="align-middle" style="font-size: 13px; border-collapse: collapse; width: 100%; border: 1px solid #dee2e6;">
-        <thead>
-          <tr style="background-color: #212529; color: white; text-align: center;">
-            <th style="border: 1px solid #dee2e6; padding: 8px;">${t.pdfThEmpId}</th>
-            <th style="border: 1px solid #dee2e6; padding: 8px;">${t.pdfThName}</th>
-            <th style="border: 1px solid #dee2e6; padding: 8px;">${t.pdfThType}</th>
-            <th style="border: 1px solid #dee2e6; padding: 8px;">${t.pdfThQuota}</th>
-            <th style="border: 1px solid #dee2e6; padding: 8px;">${t.pdfThUsed}</th>
-            <th style="border: 1px solid #dee2e6; padding: 8px;">${t.pdfThRemaining}</th>
-            <th style="border: 1px solid #dee2e6; padding: 8px;">${t.pdfThNote}</th>
-          </tr>
-        </thead>
-        <tbody>
-    `;
-
-    employeesData.forEach((emp, empIdx) => {
-      const types = [
-        { key: 'annual', label: t.typeAnnual },
-        { key: 'personal', label: t.typePersonal },
-        { key: 'sick', label: t.typeSick }
-      ];
-
-      // สลับสีพื้นหลังตามตัวบุคคล (คนแรกขาว คนที่สองเทาอ่อน)
-      const bgColor = empIdx % 2 === 0 ? '#ffffff' : '#f8f9fa';
-
-      types.forEach((item, tIdx) => {
-        const l = emp.leaves[item.key] || { quota: 0, used: 0 };
-        const remain = l.quota - l.used;
-        
-        // เส้นคั่นปกติ (เส้นสีเทาบางๆ ทั้งหมด ไม่เอาเส้นดำหนา)
-        const borderBottomStyle = 'border-bottom: 1px solid #dee2e6;';
-
-        html += `<tr style="background-color: ${bgColor};">`;
-
-        if (tIdx === 0) {
-          html += `
-            <td rowspan="3" style="border: 1px solid #dee2e6; ${borderBottomStyle} text-align: center; font-weight: bold; vertical-align: middle;">${emp.empId}</td>
-            <td rowspan="3" style="border: 1px solid #dee2e6; ${borderBottomStyle} vertical-align: middle; padding: 6px;">${emp.name}</td>
-          `;
-        }
-
-        html += `
-          <td style="border: 1px solid #dee2e6; ${borderBottomStyle} padding: 6px;">${item.label}</td>
-          <td style="border: 1px solid #dee2e6; ${borderBottomStyle} text-align: center; padding: 6px;">${l.quota}</td>
-          <td style="border: 1px solid #dee2e6; ${borderBottomStyle} text-align: center; padding: 6px;">${l.used}</td>
-          <td style="border: 1px solid #dee2e6; ${borderBottomStyle} text-align: center; font-weight: bold; padding: 6px; color: ${remain < 0 ? '#ef4444' : '#10b981'};">${remain}</td>
-        `;
-
-        if (tIdx === 0) {
-          html += `
-            <td rowspan="3" style="border: 1px solid #dee2e6; ${borderBottomStyle} vertical-align: middle; padding: 6px;"><small>${emp.note || '-'}</small></td>
-          `;
-        }
-
-        html += `</tr>`;
-      });
-    });
-
-    html += `</tbody></table>`;
-    document.getElementById('pdfSummaryTable').innerHTML = html;
-    new bootstrap.Modal(document.getElementById('pdfPreviewModal')).show();
-  }
-
-  function downloadPdf() {
-    const element = document.getElementById('pdfContentArea');
-    const opt = {
-      margin:       10,
-      filename:     'Employee_Leave_Report.pdf',
-      image:        { type: 'jpeg', quality: 0.98 },
-      html2canvas:  { scale: 2, useCORS: true },
-      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    };
-
-    html2pdf().from(element).set(opt).save().then(() => {
-      bootstrap.Modal.getInstance(document.getElementById('pdfPreviewModal')).hide();
-    });
-  }
-
   function quickAdjust(empIndex, typeKey, delta) {
     const emp = JSON.parse(JSON.stringify(employeesData[empIndex]));
     if (!emp.leaves[typeKey]) return;
@@ -1188,12 +1029,7 @@ async function callGasApi(action, payload) {
     payload.name = document.getElementById('editName').value.trim();
     payload.note = document.getElementById('editNote').value.trim();
 
-    payload.leaves.annual.quota = document.getElementById('editAnnualQ').value;
-    payload.leaves.annual.used = document.getElementById('editAnnualU').value;
-    payload.leaves.personal.quota = document.getElementById('editPersonalQ').value;
-    payload.leaves.personal.used = document.getElementById('editPersonalU').value;
-    payload.leaves.sick.quota = document.getElementById('editSickQ').value;
-    payload.leaves.sick.used = document.getElementById('editSickU').value;
+    [['annual', 'Annual'], ['personal', 'Personal'], ['sick', 'Sick']].forEach(([k, n]) => { if (payload.leaves[k]) { payload.leaves[k].quota = document.getElementById('edit' + n + 'Q').value; payload.leaves[k].used = document.getElementById('edit' + n + 'U').value; } });
 
     bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
     callGasApi('updateEmployee', payload);
@@ -1204,28 +1040,6 @@ async function callGasApi(action, payload) {
     const startRow = document.getElementById('editStartRow').value;
     bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
     callGasApi('deleteEmployee', startRow);
-  }
-
-  function openAddModal() {
-    new bootstrap.Modal(document.getElementById('addModal')).show();
-  }
-
-  function saveNewEmployee() {
-    const payload = {
-      empId: document.getElementById('addEmpId').value.trim(),
-      name: document.getElementById('addName').value.trim(),
-      annualQuota: document.getElementById('addAnnualQ').value,
-      annualUsed: document.getElementById('addAnnualU').value,
-      personalQuota: document.getElementById('addPersonalQ').value,
-      personalUsed: document.getElementById('addPersonalU').value,
-      sickQuota: document.getElementById('addSickQ').value,
-      sickUsed: document.getElementById('addSickU').value,
-      note: document.getElementById('addNote').value.trim()
-    };
-    if (!payload.empId || !payload.name) return alert('กรุณากรอกรหัสและชื่อพนักงาน');
-
-    bootstrap.Modal.getInstance(document.getElementById('addModal')).hide();
-    callGasApi('addEmployee', payload);
   }
 
   function applyBulkQuota() {
@@ -1263,15 +1077,18 @@ async function callGasApi(action, payload) {
   }
 
   function switchTab(tab) {
+    if (!isUnlocked()) tab = 'ot';
+    curTab = tab;
     [['cards', 'Cards'], ['overview', 'Overview'], ['ot', 'Ot']].forEach(([t, n]) => {
       const b = document.getElementById('btnTab' + n);
       b.classList.toggle('btn-primary', t === tab);
       b.classList.toggle('btn-outline-primary', t !== tab);
     });
-    document.getElementById('viewCards').classList.toggle('d-none', tab !== 'cards');
-    document.getElementById('filterBar').classList.toggle('d-none', tab !== 'cards');
+    document.getElementById('viewLeave').classList.toggle('d-none', tab !== 'cards');
     document.getElementById('viewOverview').classList.toggle('d-none', tab !== 'overview');
     document.getElementById('viewOT').classList.toggle('d-none', tab !== 'ot');
+    syncRangeBar();
+    if (tab === 'cards') renderCards();
     if (tab === 'overview') renderOverview();
     if (tab === 'ot') loadOT();
   }
@@ -1298,6 +1115,8 @@ async function callGasApi(action, payload) {
     renderCards();
     renderOverview();
     if (!document.getElementById('viewOT').classList.contains('d-none')) renderOT();
+    if (byId('dataModal').classList.contains('show')) dmRender();
+    syncRangeBar();
   }
 
 /* ===================== v2: PIN lock / Leave log / OT tab / Quota admin ===================== */
@@ -1319,14 +1138,24 @@ const X = {   // key: [Thai, English]  (static labels, data-i18n)
 };
 Object.entries(X).forEach(([k, [a, b]]) => { i18n.th[k] = a; i18n.en[k] = b; });
 
-/* ---------- PIN ---------- */
+/* ---------- PIN / modes: locked = "OT" mode (daily OT + weekly plan only) · unlocked = "แมนพาวเวอร์" (everything) ---------- */
 const isUnlocked = () => sessionStorage.getItem('mpAuth') === '1';
+function openPin() { byId('pinInput').value = ''; byId('pinMsg').textContent = ''; byId('pinLock').style.display = 'flex'; setTimeout(() => byId('pinInput').focus(), 50); }
 function tryUnlock() {
   if (byId('pinInput').value === ACCESS_PIN) { sessionStorage.setItem('mpAuth', '1'); byId('pinLock').style.display = 'none'; fetchData(); }
   else { byId('pinMsg').textContent = '✖ ' + L('รหัสไม่ถูกต้อง', 'Wrong password'); byId('pinInput').select(); }
 }
 function lockApp() { sessionStorage.removeItem('mpAuth'); location.reload(); }
-if (isUnlocked()) byId('pinLock').style.display = 'none';
+function lockToggle() { isUnlocked() ? lockApp() : openPin(); }
+function applyMode() {
+  const u = isUnlocked();
+  i18n.th.appTitle = u ? 'แมนพาวเวอร์' : 'OT'; i18n.en.appTitle = u ? 'ManPower' : 'OT';
+  document.querySelectorAll('[data-i18n="appTitle"]').forEach(el => el.innerText = i18n[currentLang].appTitle);
+  document.title = i18n[currentLang].appTitle;
+  ['btnTabCards', 'btnTabOverview', 'btnSettingsTop'].forEach(id => byId(id).classList.toggle('d-none', !u));
+  byId('btnLock').innerHTML = u ? '<i class="bi bi-lock-fill"></i>' : '<i class="bi bi-unlock-fill"></i>';
+  byId('btnLock').title = u ? 'Lock' : 'Unlock (PIN)';
+}
 
 /* ---------- helpers ---------- */
 async function xAll(table, col = 'id') {
@@ -1336,7 +1165,6 @@ async function xAll(table, col = 'id') {
     if (error) throw error; out.push(...data); if (data.length < 1000) return out;
   }
 }
-async function reloadAll() { employeesData = await loadLeaveData(); renderCards(); renderOverview(); }
 async function addUsed(rowId, deltaDays) {
   const cur = await supabaseClient.from('mp_leaves').select('used').eq('id', rowId).single().then(chk);
   const next = Math.max(0, Math.round((Number(cur.used) + deltaDays) * 1000) / 1000);
@@ -1355,54 +1183,42 @@ function quotaDiffs(action, p) {                       // quota changes made thr
   return out;
 }
 
-/* ---------- ENTRY: leave form ---------- */
-function openEntryModal() {
-  byId('lvEmp').innerHTML = employeesData.map(e => `<option value="${e.startRow}">${xE(e.empId)} ${xE(e.name)}</option>`).join('');
-  byId('lvType').innerHTML = Object.entries(LEAVE_LABELS).map(([k, l]) => `<option value="${k}">${l}</option>`).join('');
-  byId('lvDate').value = nowBkk();
-  renderLeaveHist();
-  bootstrap.Modal.getOrCreateInstance(byId('entryModal')).show();
+/* ---------- shared data + helpers ---------- */
+const QT = ['annual', 'personal', 'sick'];
+const DEFAULT_Q = { annual: 6, personal: 3, sick: 30 };
+let leaveLogs = [], quotaLogs = [], planRows = [];
+const T = v => { const s = String(v ?? '').trim(); return s || null; };
+const num = v => { if (v == null || v === '') return null; const n = parseFloat(String(v).replace(',', '.')); return isNaN(n) ? null : n; };
+const code0 = v => { const s = T(v); return s && /^\d+\.0+$/.test(s) ? s.replace(/\.0+$/, '') : s; };
+const cellOf = (r, map, k) => map[k] >= 0 ? r[map[k]] : '';
+const findEmp = (code, name) => {
+  const c = String(code || '').trim().toLowerCase(), n = String(name || '').trim().toLowerCase();
+  return (c && employeesData.find(e => String(e.empId).trim().toLowerCase() === c)) || (n && employeesData.find(e => String(e.name).trim().toLowerCase() === n)) || null;
+};
+const leaveKeyOf = v => {
+  const s = String(v ?? '').trim().toLowerCase(); if (!s) return null;
+  if (/annual|vacation|พักร้อน|พักผ่อน|年假|年休/.test(s)) return 'annual';
+  if (/personal|business|กิจ|事假/.test(s)) return 'personal';
+  if (/sick|ป่วย|病假/.test(s)) return 'sick';
+  return null;
+};
+async function refreshLogs() {
+  const u = isUnlocked();     // locked (OT mode) never downloads leave / quota data
+  [leaveLogs, otRows, quotaLogs, planRows] = await Promise.all([u ? xAll('mp_leave_logs') : [], xAll('mp_ot_logs'), u ? xAll('mp_quota_logs') : [], xAll('mp_ot_plans')]);
+  if (!otA) otA = otRows.reduce((m, r) => r.ot_date > m ? r.ot_date : m, '') || nowBkk();
 }
-async function saveLeaveLog() {
-  const emp = employeesData.find(e => String(e.startRow) === byId('lvEmp').value), key = byId('lvType').value, date = byId('lvDate').value, hrs = Number(byId('lvHours').value);
-  if (!emp || !date || !(hrs > 0)) return alert(L('กรอกพนักงาน วันที่ และชั่วโมงที่ลา (> 0)', 'Employee, date and hours (> 0) are required'));
-  const lf = emp.leaves[key]; if (!lf) return alert(L('พนักงานไม่มีโควต้าประเภทนี้', 'No quota row for this leave type'));
-  showLoader(true, L('กำลังบันทึกข้อมูล...', 'Saving...'));
-  let logId = null;
-  try {
-    const log = await supabaseClient.from('mp_leave_logs').insert({ employee_id: emp.startRow, leave_key: key, label: lf.label || LEAVE_LABELS[key],
-      leave_date: date, hours: hrs, reason: byId('lvReason').value.trim() || null, source: 'web' }).select().single().then(chk);
-    logId = log.id;
-    await addUsed(lf.row, hrs / HOURS_PER_DAY);
-  } catch (err) {
-    if (logId) await supabaseClient.from('mp_leave_logs').delete().eq('id', logId);
-    showLoader(false); return alert('Error: ' + (err.message || err));
-  }
-  byId('lvHours').value = ''; byId('lvReason').value = '';
-  try { await reloadAll(); await renderLeaveHist(); } catch (err) { alert('Error: ' + (err.message || err)); }
-  showLoader(false);
-}
-async function renderLeaveHist() {
-  const box = byId('lvHist'); box.textContent = '…';
-  try {
-    const { data, error } = await supabaseClient.from('mp_leave_logs').select('*').order('id', { ascending: false }).limit(30); if (error) throw error;
-    box.innerHTML = `<table class="table table-sm"><thead class="table-light"><tr><th>${L('วันที่', 'Date')}</th><th>${L('พนักงาน', 'Employee')}</th><th>${L('ประเภท', 'Type')}</th><th>h</th><th>${L('เหตุผล', 'Reason')}</th><th></th></tr></thead><tbody>` +
-      data.map(r => { const e = employeesData.find(x => x.startRow === r.employee_id);
-        return `<tr><td>${xE(r.leave_date)}</td><td>${xE(e ? e.name : r.employee_id)}</td><td>${xE(r.label || r.leave_key)}</td><td>${r.hours}</td><td>${xE(r.reason || '')}</td><td><button class="btn btn-sm btn-outline-danger py-0" onclick="delLeaveLog(${r.id})"><i class="bi bi-trash"></i></button></td></tr>`; }).join('') + '</tbody></table>';
-  } catch (e) { box.textContent = e.message; }
-}
-async function delLeaveLog(id) {
-  if (!confirm(L('ลบรายการนี้และคืนยอดวันลา?', 'Delete this log and give the days back?'))) return;
-  try {
-    const r = await supabaseClient.from('mp_leave_logs').select('*').eq('id', id).single().then(chk);
-    const e = employeesData.find(x => x.startRow === r.employee_id), lf = e && e.leaves[r.leave_key];
-    if (lf) await addUsed(lf.row, -Number(r.hours) / HOURS_PER_DAY);
-    await supabaseClient.from('mp_leave_logs').delete().eq('id', id).then(chk);
-    await reloadAll(); renderLeaveHist();
-  } catch (err) { alert('Error: ' + (err.message || err)); }
-}
+function renderAllViews() { if (isUnlocked()) { renderCards(); renderOverview(); } if (!byId('viewOT').classList.contains('d-none')) renderOT(); }
+async function reloadAll() { employeesData = await loadLeaveData(isUnlocked()); await refreshLogs(); renderAllViews(); }
 
-/* ---------- ENTRY: OT import (xlsx / csv + column mapping) ---------- */
+/* ---------- Add Data modal ---------- */
+const DM_MODES = {
+  addEmp: ['เพิ่มพนักงาน', 'Add employee'], delEmp: ['ลบพนักงาน', 'Delete employee'], editEmp: ['แก้ไขข้อมูลพนักงาน (รวมรหัส)', 'Edit employee (incl. ID)'],
+  quota: ['แก้ไขโควต้าวันลา', 'Edit leave quota'], leave: ['บันทึกการลา', 'Record leave'], ot: ['ลง OT ประจำวัน', 'Daily OT'], plan: ['ลงแพลน OT รายสัปดาห์', 'Weekly OT plan']
+};
+const DM_PUBLIC = ['ot', 'plan'];
+const dmModes = () => Object.entries(DM_MODES).filter(([k]) => isUnlocked() || DM_PUBLIC.includes(k));
+const ID_AL = ['emp_id', 'empid', 'รหัสพนักงาน', 'รหัส', '工号', 'code'];
+const NAME_AL = ['name', 'ชื่อพนักงาน', 'ชื่อ', '姓名', 'employee name'];
 const OT_FIELDS = [
   ['emp_name', 'ชื่อ / Name', ['人员', '填写人', '姓名', 'name', 'ชื่อ', 'พนักงาน']],
   ['emp_code', 'รหัส / ID  填写人.工号', ['填写人.工号', '工号', 'emp_id', 'empid', 'รหัส']],
@@ -1413,9 +1229,46 @@ const OT_FIELDS = [
   ['is_leave', 'ลาหรือไม่  是否请假', ['是否请假', 'is_leave']],
   ['submitted_at', 'เวลาส่ง  提交时间', ['提交时间', 'submitted_at', 'timestamp']],
   ['leave_category', 'ประเภทลา  请假类别', ['请假类别', 'leave_category']],
-  ['leave_time', 'เวลาลา  请假时间', ['请假时间', 'leave_time']]
+  ['leave_time', 'เวลาลา  请假时间', ['请假时间', 'leave_time']],
+  ['process', 'ขั้นตอนผลิต  制程', ['制程', 'process']],
+  ['ot_type', 'ประเภท OT  加班类型', ['加班类型', 'ot_type', 'ot type']],
+  ['note', 'หมายเหตุ  备注', ['备注', 'note', 'noted']],
+  ['reason', 'เหตุผล  加班理由', ['加班理由', 'reason', 'reasons']]
 ];
-let otHeaders = [], otFileRows = [];
+const DM_FIELDS = {
+  addEmp: [['emp_code', 'รหัสพนักงาน / ID', ID_AL], ['emp_name', 'ชื่อ / Name', NAME_AL],
+    ['annual_q', 'โควต้าพักร้อน / Annual quota', ['annual_q', 'annual quota', 'โควต้าพักร้อน', 'annual']], ['annual_u', 'ลาพักร้อนที่ใช้ / Annual used', ['annual_u', 'annual used', 'ใช้พักร้อน']],
+    ['personal_q', 'โควต้าลากิจ / Personal quota', ['personal_q', 'personal quota', 'โควต้าลากิจ', 'personal']], ['personal_u', 'ลากิจที่ใช้ / Personal used', ['personal_u', 'personal used', 'ใช้ลากิจ']],
+    ['sick_q', 'โควต้าลาป่วย / Sick quota', ['sick_q', 'sick quota', 'โควต้าลาป่วย', 'sick']], ['sick_u', 'ลาป่วยที่ใช้ / Sick used', ['sick_u', 'sick used', 'ใช้ลาป่วย']],
+    ['note', 'โน้ต / Note', ['note', 'โน้ต', 'หมายเหตุ']]],
+  delEmp: [['emp_code', 'รหัสพนักงาน / ID', ID_AL], ['emp_name', 'ชื่อ / Name', NAME_AL]],
+  editEmp: [['emp_code', 'รหัสเดิม (ใช้จับคู่) / Current ID', ['old_id', 'รหัสเดิม', ...ID_AL]], ['emp_name', 'ชื่อเดิม (จับคู่ถ้าไม่มีรหัส) / Current name', ['old_name', 'ชื่อเดิม', ...NAME_AL]],
+    ['new_code', 'รหัสใหม่ / New ID', ['new_id', 'new_code', 'รหัสใหม่']], ['new_name', 'ชื่อใหม่ / New name', ['new_name', 'ชื่อใหม่']], ['note', 'โน้ต / Note', ['note', 'โน้ต', 'หมายเหตุ']]],
+  quota: [['emp_code', 'รหัสพนักงาน / ID', ID_AL], ['emp_name', 'ชื่อ / Name', NAME_AL],
+    ['annual_q', 'โควต้าพักร้อน / Annual', ['annual_q', 'annual', 'พักร้อน', '年假']], ['personal_q', 'โควต้าลากิจ / Personal', ['personal_q', 'personal', 'กิจ', '事假']], ['sick_q', 'โควต้าลาป่วย / Sick', ['sick_q', 'sick', 'ป่วย', '病假']]],
+  leave: [['emp_code', 'รหัสพนักงาน / ID', ID_AL], ['emp_name', 'ชื่อ / Name', NAME_AL],
+    ['leave_date', 'วันที่ลา / Date', ['leave_date', 'วันที่ลา', 'date', 'วันที่', '请假日期', '日期']], ['leave_key', 'ประเภทการลา / Type', ['leave_key', 'leave type', 'type', 'ประเภทการลา', 'ประเภท', '请假类别']],
+    ['hours', 'ชั่วโมงที่ลา / Hours', ['hours', 'hour', 'ชั่วโมง', '小时']], ['reason', 'เหตุผล / Reason', ['reason', 'เหตุผล', '原因']]],
+  ot: OT_FIELDS
+};
+let dmMode = 'leave', dmMethod = 'form', dmHeaders = [], dmRows = [];
+function openDataModal(mode) { if (mode) dmMode = mode; if (!isUnlocked() && !DM_PUBLIC.includes(dmMode)) dmMode = 'ot'; dmMethod = 'form'; dmNote(''); dmRender(); bootstrap.Modal.getOrCreateInstance(byId('dataModal')).show(); }
+function dmSetMode(m) { dmMode = m; dmMethod = 'form'; dmNote(''); dmRender(); }
+function dmSetMethod(m) { dmMethod = m; dmNote(''); dmRender(); }
+function dmNote(msg, ok = true) { byId('dmMsg').innerHTML = msg ? `<div class="alert alert-${ok ? 'success' : 'danger'} py-2 small">${xE(msg)}</div>` : ''; }
+const empOpts = () => employeesData.map(e => `<option value="${e.startRow}">${xE(e.empId)} ${xE(e.name)}</option>`).join('');
+function dmRender() {
+  byId('dmMode').innerHTML = dmModes().map(([k, [a, b]]) => `<option value="${k}"${k === dmMode ? ' selected' : ''}>${L(a, b)}</option>`).join('');
+  byId('dmMethods').innerHTML = [['form', L('ฟอร์ม', 'Form'), 'ui-checks'], ['paste', L('วางตาราง (Paste)', 'Paste table'), 'clipboard'], ['file', L('แนบไฟล์ .xlsx/.csv', 'Attach .xlsx/.csv'), 'file-earmark-spreadsheet']]
+    .map(([k, l, ic]) => `<button type="button" class="btn ${dmMethod === k ? 'btn-primary' : 'btn-outline-primary'}" onclick="dmSetMethod('${k}')"><i class="bi bi-${ic}"></i> ${l}</button>`).join('');
+  byId('dmMap').innerHTML = ''; dmHeaders = []; dmRows = [];
+  const b = byId('dmBody');
+  if (dmMethod === 'form') { b.innerHTML = DM_FORM[dmMode](); DM_INIT[dmMode](); return; }
+  const hint = `<div class="small text-muted mt-2">${L('คอลัมน์ที่รองรับ', 'Supported columns')}: ${DM_FIELDS[dmMode].map(f => xE(f[1])).join(' · ')}</div>`;
+  b.innerHTML = dmMethod === 'paste'
+    ? `<label class="form-label small mb-0">${L('วางตารางจาก Excel / Google Sheets (แถวแรก = หัวคอลัมน์)', 'Paste a table from Excel / Sheets (first row = headers)')}</label><textarea id="dmPaste" rows="8" class="form-control form-control-sm font-monospace"></textarea><button class="btn btn-primary btn-sm mt-2" onclick="dmReadPaste()">${L('อ่านข้อมูล', 'Read data')}</button>${hint}`
+    : `<label class="form-label small mb-0">${tx('otFile')}</label><input type="file" id="dmFile" class="form-control form-control-sm" accept=".xlsx,.xls,.csv" onchange="dmReadFile(this)">${hint}`;
+}
 function csvToAoa(txt) {
   txt = txt.replace(/^\uFEFF/, ''); const sep = (txt.split('\n')[0] || '').includes('\t') ? '\t' : ',', rows = []; let row = [], cell = '', q = false;
   for (let i = 0; i < txt.length; i++) {
@@ -1428,25 +1281,182 @@ function csvToAoa(txt) {
   }
   row.push(cell); rows.push(row); return rows;
 }
-async function otReadFile(inp) {
+function dmLoad(aoa) {
+  aoa = aoa.filter(r => r.some(c => String(c ?? '').trim() !== ''));
+  if (aoa.length < 2) return dmNote(L('ไม่พบข้อมูล (ต้องมีหัวคอลัมน์ + อย่างน้อย 1 แถว)', 'No data (need a header row + at least 1 row)'), false);
+  dmHeaders = aoa[0].map(hTxt); dmRows = aoa.slice(1); dmNote(''); dmRenderMap();
+}
+function dmReadPaste() { dmLoad(csvToAoa(byId('dmPaste').value)); }
+async function dmReadFile(inp) {
   const f = inp.files[0]; if (!f) return;
   try {
     let aoa;
     if (/\.csv$/i.test(f.name)) aoa = csvToAoa(await f.text());
     else { const wb = XLSX.read(await f.arrayBuffer(), { type: 'array', cellDates: true }); aoa = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: true, defval: '' }); }
-    aoa = aoa.filter(r => r.some(c => String(c ?? '').trim() !== ''));
-    otHeaders = (aoa[0] || []).map(h => String(h).trim()); otFileRows = aoa.slice(1); renderMap();
-  } catch (e) { alert('Error: ' + e.message); }
+    dmLoad(aoa);
+  } catch (e) { dmNote('Error: ' + e.message, false); }
 }
-function renderMap() {
-  const low = otHeaders.map(h => h.toLowerCase());
-  const guess = al => { for (const a of al) { const i = low.indexOf(a.toLowerCase()); if (i >= 0) return i; }
-    for (const a of al) { const i = low.findIndex(h => h.includes(a.toLowerCase())); if (i >= 0) return i; } return -1; };
-  byId('otMap').innerHTML = `<h6 class="fw-bold">${tx('otMapTitle')} <span class="text-muted small">(${otFileRows.length} ${L('แถว', 'rows')})</span></h6><div class="row g-2">` +
-    OT_FIELDS.map(([k, l, al]) => { const g = guess(al);
-      return `<div class="col-md-6"><label class="form-label small mb-0">${l}</label><select class="form-select form-select-sm" data-f="${k}"><option value="-1">— ${L('ไม่ใช้', 'skip')} —</option>${otHeaders.map((h, i) => `<option value="${i}"${g === i ? ' selected' : ''}>${xE(h)}</option>`).join('')}</select></div>`; }).join('') +
-    `</div><button class="btn btn-success btn-sm mt-3" onclick="otImport()">${tx('btnOtImport')}</button>`;
+function dmGuessAll(headers, fields) {                     // exact match first (in alias order), then partial; a column is never used twice
+  const low = headers.map(h => h.toLowerCase()), res = {}, used = new Set();
+  fields.forEach(([k, , al]) => { res[k] = -1; for (const a of al) { const i = low.indexOf(a.toLowerCase()); if (i >= 0 && !used.has(i)) { res[k] = i; used.add(i); break; } } });
+  fields.forEach(([k, , al]) => { if (res[k] >= 0) return; for (const a of al) { const i = low.findIndex((h, j) => !used.has(j) && h.includes(a.toLowerCase())); if (i >= 0) { res[k] = i; used.add(i); break; } } });
+  return res;
 }
+function dmRenderMap() {
+  const f = DM_FIELDS[dmMode], g = dmGuessAll(dmHeaders, f);
+  const dc = dmMode === 'plan' ? dmHeaders.map((h, i) => [i, planDate(h)]).filter(x => x[1]) : [];
+  const dateBox = dmMode !== 'plan' ? '' : `<div class="mt-3"><label class="form-label small fw-bold mb-1">${L('คอลัมน์วันที่ในสัปดาห์ (ติ๊กที่จะนำเข้า · ค่าเช่น 2H / 0H)', 'Date columns (tick to import · values like 2H / 0H)')}</label><div class="d-flex flex-wrap gap-2" id="dmDates">` +
+    (dc.map(([i, d]) => `<label class="small border rounded px-2 py-1"><input type="checkbox" class="form-check-input me-1" value="${i}" checked>${xE(dmHeaders[i])} <span class="text-muted">→ ${d}</span></label>`).join('') || `<span class="text-danger small">${L('ไม่พบหัวคอลัมน์ที่เป็นวันที่ (เช่น 11/20/26)', 'No date-like headers found (e.g. 11/20/26)')}</span>`) + '</div></div>';
+  byId('dmMap').innerHTML = `<h6 class="fw-bold">${tx('otMapTitle')} <span class="text-muted small">(${dmRows.length} ${L('แถว', 'rows')})</span></h6><div class="row g-2">` +
+    f.map(([k, l]) => `<div class="col-md-6"><label class="form-label small mb-0">${xE(l)}</label><select class="form-select form-select-sm" data-f="${k}"><option value="-1">— ${L('ไม่ใช้', 'skip')} —</option>${dmHeaders.map((h, i) => `<option value="${i}"${g[k] === i ? ' selected' : ''}>${xE(h)}</option>`).join('')}</select></div>`).join('') +
+    `</div>${dateBox}<button class="btn btn-success btn-sm mt-3" onclick="dmImport()">${tx('btnOtImport')}</button>`;
+}
+const DM_NEED = {
+  addEmp: m => m.emp_code < 0 || m.emp_name < 0 ? L('ต้องจับคู่: รหัส และ ชื่อ', 'Map: ID and name') : '',
+  delEmp: m => m.emp_code < 0 && m.emp_name < 0 ? L('ต้องจับคู่: รหัส หรือ ชื่อ', 'Map: ID or name') : '',
+  editEmp: m => (m.emp_code < 0 && m.emp_name < 0) || (m.new_code < 0 && m.new_name < 0 && m.note < 0) ? L('ต้องจับคู่: รหัส/ชื่อเดิม และอย่างน้อย 1 ค่าที่จะแก้', 'Map: current ID/name and at least one value to change') : '',
+  quota: m => (m.emp_code < 0 && m.emp_name < 0) || (m.annual_q < 0 && m.personal_q < 0 && m.sick_q < 0) ? L('ต้องจับคู่: รหัส/ชื่อ และอย่างน้อย 1 โควต้า', 'Map: ID/name and at least one quota') : '',
+  leave: m => (m.emp_code < 0 && m.emp_name < 0) || m.leave_date < 0 || m.leave_key < 0 || m.hours < 0 ? L('ต้องจับคู่: รหัส/ชื่อ, วันที่, ประเภท, ชั่วโมง', 'Map: ID/name, date, type, hours') : '',
+  ot: m => m.ot_date < 0 || m.ot_hours < 0 || (m.emp_code < 0 && m.emp_name < 0) ? L('ต้องจับคู่อย่างน้อย: วันที่ OT, ชั่วโมง OT และ ชื่อหรือรหัส', 'Map at least: OT date, OT hours and name or ID') : ''
+};
+async function dmImport() {
+  const map = {}; byId('dmMap').querySelectorAll('select[data-f]').forEach(s => map[s.dataset.f] = +s.value);
+  map._dates = [...byId('dmMap').querySelectorAll('#dmDates input:checked')].map(i => +i.value);
+  const need = DM_NEED[dmMode](map); if (need) return alert(need);
+  showLoader(true, L('กำลังนำเข้า...', 'Importing...'));
+  try {
+    const msg = await DM_IMPORT[dmMode](map);
+    if (msg) { dmNote(msg); byId('dmMap').innerHTML = ''; dmRows = []; }
+    await reloadAll();
+  } catch (err) { dmNote('Error: ' + (err.message || err), false); }
+  showLoader(false);
+}
+
+/* ---------- forms ---------- */
+const qInputs = (pfx, withUsed) => `<table class="table table-sm table-bordered text-center align-middle"><thead class="table-light"><tr><th>${L('ประเภทการลา', 'Leave type')}</th><th>${L('โควต้า (วัน)', 'Quota (days)')}</th>${withUsed ? `<th>${L('ลาจริงเริ่มต้น', 'Initial used')}</th>` : ''}</tr></thead><tbody>` +
+  QT.map(t => `<tr><td class="text-start">${LEAVE_LABELS[t]}</td><td><input type="number" step="0.5" id="${pfx}Q_${t}" value="${DEFAULT_Q[t]}" class="form-control form-control-sm text-center"></td>${withUsed ? `<td><input type="number" step="0.5" id="${pfx}U_${t}" value="0" class="form-control form-control-sm text-center"></td>` : ''}</tr>`).join('') + '</tbody></table>';
+const DM_FORM = {
+  addEmp: () => `<div class="row g-2 mb-2"><div class="col-5"><label class="form-label small fw-bold mb-0">${tx('lblEmpId')}</label><input id="aeCode" class="form-control form-control-sm" placeholder="C26999"></div><div class="col-7"><label class="form-label small fw-bold mb-0">${tx('lblName')}</label><input id="aeName" class="form-control form-control-sm"></div></div>${qInputs('ae', true)}<label class="form-label small fw-bold mb-0">${tx('lblNote')}</label><input id="aeNote" class="form-control form-control-sm"><button class="btn btn-success btn-sm mt-3" onclick="saveAddEmpForm()">${tx('btnAddConfirm')}</button>`,
+  delEmp: () => `<label class="form-label small fw-bold mb-0">${L('เลือกพนักงานที่จะลบ (เลือกได้หลายคน)', 'Select employees to delete (multi-select)')}</label><select id="deSel" multiple size="10" class="form-select form-select-sm">${empOpts()}</select><div class="small text-muted mt-1">${L('ลบพนักงาน โควต้า ประวัติการลา และประวัติโควต้าของคนนั้น (OT log จะเก็บไว้โดยไม่ผูกพนักงาน)', 'Removes the employee, quotas, leave log and quota log (OT log is kept, unlinked)')}</div><button class="btn btn-danger btn-sm mt-2" onclick="saveDelEmpForm()"><i class="bi bi-trash"></i> ${tx('btnDelete')}</button>`,
+  editEmp: () => `<label class="form-label small fw-bold mb-0">${L('พนักงาน', 'Employee')}</label><select id="eeSel" class="form-select form-select-sm mb-2" onchange="eeFill()">${empOpts()}</select><div class="row g-2"><div class="col-5"><label class="form-label small fw-bold mb-0">${tx('lblEmpId')}</label><input id="eeCode" class="form-control form-control-sm"></div><div class="col-7"><label class="form-label small fw-bold mb-0">${tx('lblName')}</label><input id="eeName" class="form-control form-control-sm"></div><div class="col-12"><label class="form-label small fw-bold mb-0">${tx('lblNote')}</label><input id="eeNote" class="form-control form-control-sm"></div></div><button class="btn btn-primary btn-sm mt-3" onclick="saveEditEmpForm()">${tx('btnSave')}</button> <button class="btn btn-outline-secondary btn-sm mt-3" onclick="eeFull()">${L('เปิดหน้าแก้ไขเต็ม (รวมโควต้า/วันลาจริง)', 'Open full editor (quota / used)')}</button>`,
+  quota: () => `<div id="qTable" class="table-responsive"></div><label class="form-label small mb-0">${tx('quotaNote')}</label><input id="qNote" class="form-control form-control-sm"><button class="btn btn-warning btn-sm fw-bold mt-2" onclick="saveQuotas()">${tx('btnSaveQuota')}</button><hr><h6 class="fw-bold">${tx('quotaHist')}</h6><div id="qHist" class="table-responsive small"></div>`,
+  leave: () => `<div class="row g-2"><div class="col-md-6"><label class="form-label small mb-0">${tx('fEmp')}</label><select id="lvEmp" class="form-select form-select-sm"></select></div><div class="col-md-6"><label class="form-label small mb-0">${tx('fDate')}</label><input type="date" id="lvDate" class="form-control form-control-sm"></div><div class="col-md-6"><label class="form-label small mb-0">${tx('fType')}</label><select id="lvType" class="form-select form-select-sm"></select></div><div class="col-md-6"><label class="form-label small mb-0">${tx('fHours')}</label><input type="number" id="lvHours" min="0" step="0.5" class="form-control form-control-sm"></div><div class="col-12"><label class="form-label small mb-0">${tx('fReason')}</label><textarea id="lvReason" rows="2" class="form-control form-control-sm"></textarea></div></div><button class="btn btn-success btn-sm mt-3" onclick="saveLeaveLog()">${tx('btnSaveLeave')}</button><hr><h6 class="fw-bold">${tx('leaveHist')}</h6><div id="lvHist" class="table-responsive small"></div>`,
+  ot: () => `<div class="row g-2"><div class="col-md-6"><label class="form-label small mb-0">${tx('fEmp')}</label><select id="otfEmp" class="form-select form-select-sm">${empOpts()}</select></div><div class="col-md-6"><label class="form-label small mb-0">${L('วันที่ OT', 'OT date')}</label><input type="date" id="otfDate" class="form-control form-control-sm"></div><div class="col-md-4"><label class="form-label small mb-0">${L('กะ', 'Shift')} 班别</label><input id="otfShift" class="form-control form-control-sm" placeholder="白班/Day"></div><div class="col-md-4"><label class="form-label small mb-0">${L('ประเภทวัน', 'Day type')}</label><select id="otfDay" class="form-select form-select-sm"><option value="工作日">${otT('work')}</option><option value="休息日">${otT('rest')}</option><option value="节假日">${otT('hol')}</option></select></div><div class="col-md-4"><label class="form-label small mb-0">${L('ชั่วโมง OT', 'OT hours')}</label><input type="number" id="otfHours" min="0" step="0.5" class="form-control form-control-sm"></div><div class="col-md-4"><label class="form-label small mb-0">${L('ขั้นตอนผลิต', 'Process')} 制程</label><input id="otfProc" class="form-control form-control-sm"></div><div class="col-md-4"><label class="form-label small mb-0">${L('ประเภท OT', 'OT type')} 加班类型</label><input id="otfType" class="form-control form-control-sm" value="Usual"></div><div class="col-md-4"><label class="form-label small mb-0">${L('หมายเหตุ', 'Note')} 备注</label><input id="otfNote" class="form-control form-control-sm"></div><div class="col-12"><label class="form-label small mb-0">${L('เหตุผล', 'Reason')} 加班理由</label><input id="otfReason" class="form-control form-control-sm"></div></div><button class="btn btn-success btn-sm mt-3" onclick="saveOtForm()">${L('บันทึก OT', 'Save OT')}</button><hr><h6 class="fw-bold">${L('OT ล่าสุด', 'Recent OT')}</h6><div id="otHist" class="table-responsive small"></div>`
+};
+const DM_INIT = {
+  addEmp: () => {}, delEmp: () => {}, editEmp: () => eeFill(),
+  quota: () => { renderQuota(); renderQuotaHist(); },
+  leave: () => { byId('lvEmp').innerHTML = empOpts(); byId('lvType').innerHTML = Object.entries(LEAVE_LABELS).map(([k, l]) => `<option value="${k}">${l}</option>`).join(''); byId('lvDate').value = nowBkk(); renderLeaveHist(); },
+  ot: () => { byId('otfDate').value = nowBkk(); renderOtHist(); }
+};
+function eeFill() { const e = employeesData.find(x => String(x.startRow) === byId('eeSel').value); if (!e) return; byId('eeCode').value = e.empId; byId('eeName').value = e.name; byId('eeNote').value = e.note || ''; }
+function eeFull() { const i = employeesData.findIndex(x => String(x.startRow) === byId('eeSel').value); if (i < 0) return; bootstrap.Modal.getInstance(byId('dataModal')).hide(); setTimeout(() => openEditModal(i), 350); }
+
+/* ---------- employee operations ---------- */
+async function addEmployees(recs) {
+  const have = new Set(employeesData.map(e => String(e.empId).trim().toLowerCase())); let dup = 0, added = 0;
+  const ok = recs.filter(r => { const k = r.code.toLowerCase(); if (have.has(k)) { dup++; return false; } have.add(k); return true; });
+  for (const r of ok) {
+    const emp = await supabaseClient.from('mp_employees').insert({ emp_id: r.code, name: r.name, note: r.note || '' }).select().single().then(chk);
+    try { await supabaseClient.from('mp_leaves').insert(QT.map(t => ({ employee_id: emp.id, leave_key: t, label: LEAVE_LABELS[t], quota: r.q[t], used: r.u[t] }))).then(chk); }
+    catch (err) { await supabaseClient.from('mp_employees').delete().eq('id', emp.id); throw err; }     // rollback
+    added++;
+  }
+  return { added, dup };
+}
+async function deleteEmployees(ids) {
+  if (!ids.length) return;
+  await supabaseClient.from('mp_leaves').delete().in('employee_id', ids).then(chk);
+  await supabaseClient.from('mp_employees').delete().in('id', ids).then(chk);    // leave_logs / quota_logs cascade, ot_logs.employee_id -> null
+}
+async function patchEmployee(id, patch) { await supabaseClient.from('mp_employees').update(patch).eq('id', id).then(chk); }
+async function formRun(fn) {
+  showLoader(true, L('กำลังบันทึกข้อมูล...', 'Saving...'));
+  try { const msg = await fn(); await reloadAll(); if (msg) dmNote(msg); return true; }
+  catch (err) { dmNote('Error: ' + (err.message || err), false); return false; }
+  finally { showLoader(false); }
+}
+async function saveAddEmpForm() {
+  const code = byId('aeCode').value.trim(), name = byId('aeName').value.trim();
+  if (!code || !name) return alert(L('กรุณากรอกรหัสและชื่อพนักงาน', 'ID and name are required'));
+  const q = {}, u = {}; QT.forEach(t => { q[t] = Number(byId('aeQ_' + t).value) || 0; u[t] = Number(byId('aeU_' + t).value) || 0; });
+  const ok = await formRun(async () => { const r = await addEmployees([{ code, name, note: byId('aeNote').value.trim(), q, u }]); if (r.dup) throw new Error(L('รหัสพนักงานซ้ำ', 'Duplicate employee ID')); return L('เพิ่มพนักงานแล้ว', 'Employee added'); });
+  if (ok) { byId('aeCode').value = ''; byId('aeName').value = ''; byId('aeNote').value = ''; }
+}
+async function saveDelEmpForm() {
+  const ids = [...byId('deSel').selectedOptions].map(o => +o.value); if (!ids.length) return;
+  if (!confirm(L(`ยืนยันลบพนักงาน ${ids.length} คน?`, `Delete ${ids.length} employee(s)?`))) return;
+  const ok = await formRun(async () => { await deleteEmployees(ids); return L(`ลบแล้ว ${ids.length} คน`, `Deleted ${ids.length}`); });
+  if (ok) dmRender();
+}
+async function saveEditEmpForm() {
+  const id = +byId('eeSel').value, code = byId('eeCode').value.trim(), name = byId('eeName').value.trim();
+  if (!code || !name) return alert(L('กรุณากรอกรหัสและชื่อพนักงาน', 'ID and name are required'));
+  if (employeesData.some(e => e.startRow !== id && String(e.empId).trim().toLowerCase() === code.toLowerCase())) return alert(L('รหัสพนักงานซ้ำ', 'Duplicate employee ID'));
+  const sel = byId('eeSel').value;
+  const ok = await formRun(async () => { await patchEmployee(id, { emp_id: code, name, note: byId('eeNote').value.trim() }); return L('บันทึกแล้ว', 'Saved'); });
+  if (ok) { dmRender(); byId('eeSel').value = sel; eeFill(); }
+}
+
+/* ---------- leave form + log ---------- */
+async function saveLeaveLog() {
+  const emp = employeesData.find(e => String(e.startRow) === byId('lvEmp').value), key = byId('lvType').value, date = byId('lvDate').value, hrs = Number(byId('lvHours').value);
+  if (!emp || !date || !(hrs > 0)) return alert(L('กรอกพนักงาน วันที่ และชั่วโมงที่ลา (> 0)', 'Employee, date and hours (> 0) are required'));
+  const lf = emp.leaves[key]; if (!lf) return alert(L('พนักงานไม่มีโควต้าประเภทนี้', 'No quota row for this leave type'));
+  showLoader(true, L('กำลังบันทึกข้อมูล...', 'Saving...'));
+  let logId = null;
+  try {
+    const log = await supabaseClient.from('mp_leave_logs').insert({ employee_id: emp.startRow, leave_key: key, label: lf.label || LEAVE_LABELS[key],
+      leave_date: date, hours: hrs, reason: byId('lvReason').value.trim() || null, source: 'web' }).select().single().then(chk);
+    logId = log.id;
+    await addUsed(lf.row, hrs / HOURS_PER_DAY);
+  } catch (err) {
+    if (logId) await supabaseClient.from('mp_leave_logs').delete().eq('id', logId);      // rollback
+    showLoader(false); return alert('Error: ' + (err.message || err));
+  }
+  byId('lvHours').value = ''; byId('lvReason').value = '';
+  try { await reloadAll(); renderLeaveHist(); } catch (err) { alert('Error: ' + (err.message || err)); }
+  showLoader(false);
+}
+function renderLeaveHist() {
+  const box = byId('lvHist'); if (!box) return;
+  const data = [...leaveLogs].sort((a, b) => b.id - a.id).slice(0, 30);
+  box.innerHTML = `<table class="table table-sm"><thead class="table-light"><tr><th>${L('วันที่', 'Date')}</th><th>${L('พนักงาน', 'Employee')}</th><th>${L('ประเภท', 'Type')}</th><th>h</th><th>${L('เหตุผล', 'Reason')}</th><th></th></tr></thead><tbody>` +
+    data.map(r => { const e = employeesData.find(x => x.startRow === r.employee_id);
+      return `<tr><td>${xE(r.leave_date)}</td><td>${xE(e ? e.name : r.employee_id)}</td><td>${xE(r.label || r.leave_key)}</td><td>${r.hours}</td><td>${xE(r.reason || '')}</td><td><button class="btn btn-sm btn-outline-danger py-0" onclick="delLeaveLog(${r.id})"><i class="bi bi-trash"></i></button></td></tr>`; }).join('') + '</tbody></table>';
+}
+async function delLeaveLog(id) {
+  if (!confirm(L('ลบรายการนี้และคืนยอดวันลา?', 'Delete this log and give the days back?'))) return;
+  try {
+    const r = await supabaseClient.from('mp_leave_logs').select('*').eq('id', id).single().then(chk);
+    const e = employeesData.find(x => x.startRow === r.employee_id), lf = e && e.leaves[r.leave_key];
+    if (lf) await addUsed(lf.row, -Number(r.hours) / HOURS_PER_DAY);
+    await supabaseClient.from('mp_leave_logs').delete().eq('id', id).then(chk);
+    await reloadAll(); renderLeaveHist();
+  } catch (err) { alert('Error: ' + (err.message || err)); }
+}
+/* ---------- OT form + log ---------- */
+const otSig = (c, n, d, h, s) => [String(c || n || '').trim().toLowerCase(), d, Number(h), String(s || '').trim().toLowerCase()].join('|');
+function renderOtHist() {
+  const box = byId('otHist'); if (!box) return;
+  const data = [...otRows].sort((a, b) => b.id - a.id).slice(0, 30);
+  box.innerHTML = `<table class="table table-sm"><thead class="table-light"><tr><th>${L('วันที่', 'Date')}</th><th>${L('ชื่อ', 'Name')}</th><th>${L('กะ', 'Shift')}</th><th>${L('ประเภทวัน', 'Day type')}</th><th>h</th><th></th></tr></thead><tbody>` +
+    data.map(r => { const w = otWho(r);
+      return `<tr><td>${xE(r.ot_date)}</td><td>${xE(w.name)}</td><td>${xE(r.shift || '')}</td><td>${xE(otT(dayKind(r.day_type)))}</td><td>${r.ot_hours}</td><td>${isUnlocked() ? `<button class="btn btn-sm btn-outline-danger py-0" onclick="otDel(${r.id})"><i class="bi bi-trash"></i></button>` : ''}</td></tr>`; }).join('') + '</tbody></table>';
+}
+async function saveOtForm() {
+  const emp = employeesData.find(e => String(e.startRow) === byId('otfEmp').value), d = byId('otfDate').value, h = num(byId('otfHours').value), shift = T(byId('otfShift').value);
+  if (!emp || !d || h == null || h <= 0) return alert(L('กรอกพนักงาน วันที่ และชั่วโมง OT (> 0)', 'Employee, date and OT hours (> 0) are required'));
+  const sig = otSig(emp.empId, emp.name, d, h, shift);
+  if (otRows.some(r => otSig(r.emp_code, r.emp_name, r.ot_date, r.ot_hours, r.shift) === sig) && !confirm(L('มีรายการ OT เหมือนกันอยู่แล้ว บันทึกซ้ำหรือไม่?', 'An identical OT record exists. Save anyway?'))) return;
+  const ok = await formRun(async () => {
+    await supabaseClient.from('mp_ot_logs').insert({ employee_id: emp.startRow, emp_code: emp.empId, emp_name: emp.name, shift, process: T(byId('otfProc').value), ot_type: T(byId('otfType').value), note: T(byId('otfNote').value), reason: T(byId('otfReason').value), ot_date: d, ot_hours: h, day_type: byId('otfDay').value, source: 'web' }).then(chk);
+    return L('บันทึก OT แล้ว', 'OT saved');
+  });
+  if (ok) { byId('otfHours').value = ''; renderOtHist(); }
+}
+
+/* ---------- importers (paste / file) ---------- */
 function parseDT(v) {                                   // -> { d:'yyyy-mm-dd', t:'HH:MM:SS'|null } | null   (day first, Buddhist year ok)
   if (v == null || v === '') return null;
   if (v instanceof Date) { const d = new Date(Math.round(v.getTime() / 1000) * 1000); return { d: `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`, t: `${p2(d.getHours())}:${p2(d.getMinutes())}:${p2(d.getSeconds())}` }; }
@@ -1460,36 +1470,224 @@ function parseDT(v) {                                   // -> { d:'yyyy-mm-dd', 
   if (mo < 1 || mo > 12 || d < 1 || d > 31) return null;
   return { d: `${y}-${p2(mo)}-${p2(d)}`, t: m[4] ? `${p2(m[4])}:${m[5]}:${m[6] || '00'}` : null };
 }
-const otSig = (c, n, d, h, s) => [String(c || n || '').trim().toLowerCase(), d, Number(h), String(s || '').trim().toLowerCase()].join('|');
-async function otImport() {
-  const map = {}; byId('otMap').querySelectorAll('select[data-f]').forEach(s => map[s.dataset.f] = +s.value);
-  if (map.ot_date < 0 || map.ot_hours < 0 || (map.emp_code < 0 && map.emp_name < 0)) return alert(L('ต้องจับคู่อย่างน้อย: วันที่ OT, ชั่วโมง OT และ ชื่อหรือรหัส', 'Map at least: OT date, OT hours and name or ID'));
-  showLoader(true, L('กำลังนำเข้า...', 'Importing...'));
-  try {
-    const cell = (r, k) => map[k] >= 0 ? r[map[k]] : '';
-    const T = v => { const s = String(v ?? '').trim(); return s || null; };
+const DM_IMPORT = {
+  async addEmp(map) {
+    const recs = []; let bad = 0;
+    dmRows.forEach(r => {
+      const c = k => cellOf(r, map, k), code = code0(c('emp_code')), name = T(c('emp_name')); if (!code || !name) { bad++; return; }
+      const q = {}, u = {}; QT.forEach(t => { const a = num(c(t + '_q')), b = num(c(t + '_u')); q[t] = a == null ? DEFAULT_Q[t] : a; u[t] = b == null ? 0 : b; });
+      recs.push({ code, name, note: T(c('note')) || '', q, u });
+    });
+    const { added, dup } = await addEmployees(recs);
+    return L(`เพิ่มพนักงาน ${added} คน · รหัสซ้ำข้าม ${dup} · ข้อมูลไม่ครบ ${bad}`, `Added ${added} · duplicate IDs skipped ${dup} · invalid ${bad}`);
+  },
+  async delEmp(map) {
+    const ids = new Set(); let unm = 0;
+    dmRows.forEach(r => { const e = findEmp(code0(cellOf(r, map, 'emp_code')), T(cellOf(r, map, 'emp_name'))); if (e) ids.add(e.startRow); else unm++; });
+    if (!ids.size) return L(`ไม่พบพนักงานที่ตรงกัน (${unm} แถว)`, `No matching employees (${unm} rows)`);
+    if (!confirm(L(`ยืนยันลบพนักงาน ${ids.size} คน?`, `Delete ${ids.size} employee(s)?`))) return '';
+    await deleteEmployees([...ids]);
+    return L(`ลบแล้ว ${ids.size} คน · ไม่พบ ${unm} แถว`, `Deleted ${ids.size} · not found ${unm}`);
+  },
+  async editEmp(map) {
+    let done = 0, unm = 0, dup = 0; const taken = new Map(employeesData.map(e => [String(e.empId).trim().toLowerCase(), e.startRow]));
+    for (const r of dmRows) {
+      const c = k => cellOf(r, map, k), e = findEmp(code0(c('emp_code')), T(c('emp_name'))); if (!e) { unm++; continue; }
+      const patch = {}, nc = code0(c('new_code')), nn = T(c('new_name')), no = map.note >= 0 ? T(c('note')) : null;
+      if (nc) { const k = nc.toLowerCase(); if (taken.has(k) && taken.get(k) !== e.startRow) { dup++; continue; } taken.delete(String(e.empId).trim().toLowerCase()); taken.set(k, e.startRow); patch.emp_id = nc; }
+      if (nn) patch.name = nn; if (no != null) patch.note = no;
+      if (!Object.keys(patch).length) continue;
+      await patchEmployee(e.startRow, patch); done++;
+    }
+    return L(`แก้ไข ${done} คน · ไม่พบ ${unm} · รหัสใหม่ซ้ำข้าม ${dup}`, `Updated ${done} · not found ${unm} · duplicate new IDs skipped ${dup}`);
+  },
+  async quota(map) {
+    const ch = new Map(); let unm = 0;
+    dmRows.forEach(r => {
+      const e = findEmp(code0(cellOf(r, map, 'emp_code')), T(cellOf(r, map, 'emp_name'))); if (!e) { unm++; return; }
+      QT.forEach(t => { const v = num(cellOf(r, map, t + '_q')); if (v == null || v < 0) return; const lf = e.leaves[t], key = e.startRow + '|' + t;
+        if (!lf || v !== lf.quota) ch.set(key, { e: e.startRow, t, o: lf ? lf.quota : null, n: v }); else ch.delete(key); });
+    });
+    if (ch.size) await applyQuotaChanges([...ch.values()], L('นำเข้า (paste/ไฟล์)', 'import (paste/file)'));
+    return L(`ปรับโควต้า ${ch.size} รายการ · ไม่พบพนักงาน ${unm} แถว`, `Quota changes ${ch.size} · no matching employee ${unm} rows`);
+  },
+  async leave(map) {
+    const have = new Set((await xAll('mp_leave_logs')).map(r => [r.employee_id, r.leave_date, r.leave_key, Number(r.hours)].join('|')));
+    const recs = []; let bad = 0, unm = 0, dup = 0;
+    dmRows.forEach(r => {
+      const c = k => cellOf(r, map, k), emp = findEmp(code0(c('emp_code')), T(c('emp_name'))), dt = parseDT(c('leave_date')), key = leaveKeyOf(c('leave_key')), hrs = num(c('hours'));
+      if (!dt || !key || !(hrs > 0)) { bad++; return; }
+      if (!emp) { unm++; return; }
+      if (!emp.leaves[key]) { bad++; return; }
+      const s = [emp.startRow, dt.d, key, hrs].join('|'); if (have.has(s)) { dup++; return; } have.add(s);
+      recs.push({ employee_id: emp.startRow, leave_key: key, label: emp.leaves[key].label || LEAVE_LABELS[key], leave_date: dt.d, hours: hrs, reason: T(c('reason')), source: 'web-import', _row: emp.leaves[key].row });
+    });
+    const ids = [], applied = [];
+    try {
+      for (let i = 0; i < recs.length; i += 200) {
+        const d = await supabaseClient.from('mp_leave_logs').insert(recs.slice(i, i + 200).map(({ _row, ...x }) => x)).select('id').then(chk); ids.push(...d.map(x => x.id));
+      }
+      const delta = new Map(); recs.forEach(r => delta.set(r._row, (delta.get(r._row) || 0) + r.hours / HOURS_PER_DAY));
+      for (const [row, dv] of delta) { await addUsed(row, dv); applied.push([row, dv]); }
+    } catch (err) {                                      // rollback: restore used + remove inserted logs
+      for (const [row, dv] of applied) { try { await addUsed(row, -dv); } catch (e) { console.warn(e); } }
+      if (ids.length) { try { await supabaseClient.from('mp_leave_logs').delete().in('id', ids); } catch (e) { console.warn(e); } }
+      throw err;
+    }
+    return L(`บันทึกการลา ${recs.length} รายการ · ซ้ำข้าม ${dup} · ไม่พบพนักงาน ${unm} · ข้อมูลไม่ครบ/ไม่มีโควต้า ${bad}`, `Leave saved ${recs.length} · duplicates skipped ${dup} · no employee ${unm} · invalid/no quota ${bad}`);
+  },
+  async ot(map) {
+    const cell = (r, k) => cellOf(r, map, k);
     const fmt = v => v instanceof Date ? (p => p.d + ' ' + p.t)(parseDT(v)) : T(v);
-    const code0 = v => { const s = T(v); return s && /^\d+\.0+$/.test(s) ? s.replace(/\.0+$/, '') : s; };
     const byCode = new Map(employeesData.map(e => [String(e.empId).trim().toLowerCase(), e.startRow]));
     const byName = new Map(employeesData.map(e => [String(e.name).trim().toLowerCase(), e.startRow]));
     const exist = new Set((await xAll('mp_ot_logs')).map(r => otSig(r.emp_code, r.emp_name, r.ot_date, r.ot_hours, r.shift)));
     const out = []; let dup = 0, bad = 0, unm = 0;
-    otFileRows.forEach(r => {
+    dmRows.forEach(r => {
       const dt = parseDT(cell(r, 'ot_date')), hrs = parseFloat(String(cell(r, 'ot_hours')).replace(',', '.')), code = code0(cell(r, 'emp_code')), name = T(cell(r, 'emp_name'));
       if (!dt || !(hrs >= 0) || (!code && !name)) { bad++; return; }
       const sa = parseDT(cell(r, 'submitted_at')), sh = T(cell(r, 'shift')), s = otSig(code, name, dt.d, hrs, sh);
       if (exist.has(s)) { dup++; return; } exist.add(s);
-      const eid = (code && byCode.get(code.toLowerCase())) || (name && byName.get(name.toLowerCase())) || null; if (!eid) unm++;
-      out.push({ employee_id: eid, emp_code: code, emp_name: name, shift: sh, ot_date: dt.d, ot_hours: hrs, day_type: T(cell(r, 'day_type')),
+      const eid = (code && byCode.get(code.toLowerCase())) || (name && byName.get(name.toLowerCase())) || null; if (!eid) unm++;     // รหัสก่อน แล้วค่อยชื่อ
+      out.push({ employee_id: eid, emp_code: code, emp_name: name, shift: sh, process: T(cell(r, 'process')), ot_type: T(cell(r, 'ot_type')), note: T(cell(r, 'note')), reason: T(cell(r, 'reason')), ot_date: dt.d, ot_hours: hrs, day_type: T(cell(r, 'day_type')),
         is_leave: map.is_leave >= 0 ? /^(是|yes|y|true|1|ใช่)/i.test(String(cell(r, 'is_leave')).trim()) : null,
         submitted_at: sa ? `${sa.d}T${sa.t || '00:00:00'}+07:00` : null, leave_category: fmt(cell(r, 'leave_category')), leave_time: fmt(cell(r, 'leave_time')), source: 'web-import' });
     });
     for (let i = 0; i < out.length; i += 500) { const { error } = await supabaseClient.from('mp_ot_logs').insert(out.slice(i, i + 500)); if (error) throw error; }
-    byId('otFile').value = ''; byId('otMap').innerHTML = '';
-    alert(L(`นำเข้า ${out.length} แถว · ซ้ำข้าม ${dup} · ข้อมูลไม่ครบ ${bad} · ไม่พบพนักงานในระบบ ${unm}`, `Imported ${out.length} · duplicates skipped ${dup} · invalid ${bad} · no matching employee ${unm}`));
-    if (!byId('viewOT').classList.contains('d-none')) loadOT();
-  } catch (err) { alert('Error: ' + (err.message || err)); }
-  showLoader(false);
+    return L(`นำเข้า ${out.length} แถว · ซ้ำข้าม ${dup} · ข้อมูลไม่ครบ ${bad} · ไม่พบพนักงานในระบบ ${unm}`, `Imported ${out.length} · duplicates skipped ${dup} · invalid ${bad} · no matching employee ${unm}`);
+  }
+};
+
+/* ---------- OT plan (weekly) + OT-mode helpers ---------- */
+let otView = 'actual', planGrid = [], planDays = [];
+const hTxt = h => {
+  if (h instanceof Date || (typeof h === 'number' && h > 30000 && h < 80000)) { const p = parseDT(h); return p ? p.d : String(h); }
+  return String(h ?? '').replace(/\s+/g, ' ').trim();
+};
+function planDate(h) {                                    // header like 11/20/26 (M/D/YY, as in the plan sheet) or 2026-11-20 -> yyyy-mm-dd
+  const s = String(h).trim(); let m;
+  if ((m = s.match(/^(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})/))) return `${m[1]}-${p2(m[2])}-${p2(m[3])}`;
+  if ((m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/))) {
+    let mo = +m[1], d = +m[2], y = +m[3]; if (y < 100) y += 2000; else if (y > 2400) y -= 543;
+    if (mo > 12 && d <= 12) [mo, d] = [d, mo];
+    return mo < 1 || mo > 12 || d < 1 || d > 31 ? null : `${y}-${p2(mo)}-${p2(d)}`;
+  }
+  return null;
+}
+const planKey = (c, n, d) => String(c || n || '').trim().toLowerCase() + '|' + d;
+const addDays = (iso, n) => { const d = new Date(iso + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+const planBlank = () => ({ emp: '', process: '', shift: '', ot_type: 'Usual', note: '', reason: '', h: Array(7).fill('') });
+const sj = s => [...s].join(' / ');
+function otSetView(v) { otView = v; renderOT(); }
+
+DM_FIELDS.plan = [
+  ['emp_code', 'รหัส / ID  工号', ['工号', 'emp_id', 'empid', 'รหัส', 'code']], ['process', 'ขั้นตอนผลิต / Process  制程', ['制程', 'process', 'ขั้นตอน']],
+  ['emp_name', 'ชื่อ / Name  姓名', ['姓名', 'name', 'ชื่อ']], ['shift', 'กะ / Shift  班别', ['班别', 'shift', 'กะ']],
+  ['ot_type', 'ประเภท OT / OT type  加班类型', ['加班类型', 'ot_type', 'ot type']], ['note', 'หมายเหตุ / Noted  备注', ['备注', 'note', 'noted']], ['reason', 'เหตุผล / Reasons  加班理由', ['加班理由', 'reason', 'reasons']]
+];
+DM_NEED.plan = m => (m.emp_code < 0 && m.emp_name < 0) || !(m._dates && m._dates.length) ? L('ต้องจับคู่ รหัส/ชื่อ และเลือกคอลัมน์วันที่อย่างน้อย 1 คอลัมน์', 'Map ID/name and select at least one date column') : '';
+DM_FORM.plan = () => `<div class="row g-2 mb-2 align-items-end"><div class="col-auto"><label class="form-label small mb-0">${L('วันแรกของสัปดาห์ (7 วัน)', 'First day (7 days)')}</label><input type="date" id="plStart" class="form-control form-control-sm" onchange="planGridRender()"></div><div class="col-auto"><button class="btn btn-outline-secondary btn-sm" onclick="planLoadWeek()">${L('โหลดแผนที่มีอยู่', 'Load existing plan')}</button> <button class="btn btn-outline-primary btn-sm" onclick="planAddRow()">＋ ${L('เพิ่มแถว', 'Add row')}</button></div></div><div id="plGrid" class="table-responsive"></div><div class="small text-muted">${L('ใส่ 0 = ลบแผนวันนั้น · เว้นว่าง = ไม่เปลี่ยน', '0 = remove that day\'s plan · blank = unchanged')}</div><button class="btn btn-success btn-sm mt-2" onclick="savePlanForm()">${L('บันทึกแผน OT', 'Save OT plan')}</button>`;
+DM_INIT.plan = () => { planGrid = [planBlank()]; byId('plStart').value = nowBkk(); planGridRender(); };
+function planGridRender() {
+  const st = byId('plStart').value || nowBkk(); planDays = Array.from({ length: 7 }, (_, i) => addDays(st, i));
+  const inp = (i, f, v, w) => `<input class="form-control form-control-sm" style="min-width:${w}px" value="${xE(v)}" onchange="planSet(${i},'${f}',this.value)">`;
+  byId('plGrid').innerHTML = `<table class="table table-sm table-bordered align-middle text-center" style="font-size:12px"><thead class="table-success"><tr><th>${L('พนักงาน', 'Employee')} 姓名</th><th>制程</th><th>班别</th>${planDays.map(d => `<th>${d.slice(5)}</th>`).join('')}<th>加班类型</th><th>备注</th><th>加班理由</th><th></th></tr></thead><tbody>` +
+    planGrid.map((r, i) => `<tr><td><select class="form-select form-select-sm" style="min-width:150px" onchange="planSet(${i},'emp',this.value)"><option value="">—</option>${employeesData.map(e => `<option value="${e.startRow}"${String(e.startRow) === String(r.emp) ? ' selected' : ''}>${xE(e.empId)} ${xE(e.name)}</option>`).join('')}</select></td><td>${inp(i, 'process', r.process, 70)}</td><td>${inp(i, 'shift', r.shift, 80)}</td>` +
+      planDays.map((d, k) => `<td><input type="number" step="0.5" min="0" class="form-control form-control-sm" style="width:64px" value="${xE(r.h[k] ?? '')}" onchange="planSetH(${i},${k},this.value)"></td>`).join('') +
+      `<td>${inp(i, 'ot_type', r.ot_type, 70)}</td><td>${inp(i, 'note', r.note, 110)}</td><td>${inp(i, 'reason', r.reason, 110)}</td><td><button class="btn btn-sm btn-outline-danger py-0" onclick="planDelRow(${i})"><i class="bi bi-x"></i></button></td></tr>`).join('') + '</tbody></table>';
+}
+function planSet(i, f, v) { planGrid[i][f] = v; }
+function planSetH(i, k, v) { planGrid[i].h[k] = v; }
+function planAddRow() { planGrid.push(planBlank()); planGridRender(); }
+function planDelRow(i) { planGrid.splice(i, 1); if (!planGrid.length) planGrid.push(planBlank()); planGridRender(); }
+function planLoadWeek() {
+  const st = byId('plStart').value || nowBkk(), days = Array.from({ length: 7 }, (_, i) => addDays(st, i)), m = new Map();
+  planRows.filter(r => r.employee_id != null && days.includes(r.plan_date)).forEach(r => {
+    const o = m.get(r.employee_id) || { ...planBlank(), emp: r.employee_id, h: Array(7).fill('') };
+    o.h[days.indexOf(r.plan_date)] = String(Number(r.plan_hours)); ['process', 'shift', 'ot_type', 'note', 'reason'].forEach(f => { if (r[f]) o[f] = r[f]; }); m.set(r.employee_id, o);
+  });
+  planGrid = m.size ? [...m.values()] : [planBlank()]; planGridRender();
+}
+async function savePlan(recs, unm = 0, bad = 0) {
+  const ex = new Map((await xAll('mp_ot_plans')).map(r => [planKey(r.emp_code, r.emp_name, r.plan_date), r.id]));
+  const ins = [], ops = []; let upd = 0, del = 0, skip = 0;
+  recs.forEach(r => {
+    const id = ex.get(planKey(r.emp_code, r.emp_name, r.plan_date));
+    if (r.plan_hours > 0) { if (id) { ops.push(() => supabaseClient.from('mp_ot_plans').update(r).eq('id', id).then(chk)); upd++; } else ins.push(r); }
+    else if (id) { ops.push(() => supabaseClient.from('mp_ot_plans').delete().eq('id', id).then(chk)); del++; }
+    else skip++;
+  });
+  for (let i = 0; i < ops.length; i += 10) await Promise.all(ops.slice(i, i + 10).map(f => f()));
+  for (let i = 0; i < ins.length; i += 500) await supabaseClient.from('mp_ot_plans').insert(ins.slice(i, i + 500)).then(chk);
+  return L(`แผน OT: เพิ่ม ${ins.length} · อัปเดต ${upd} · ลบ ${del} · ข้าม ${skip} · ไม่พบพนักงานในระบบ ${unm} · ข้อมูลไม่ครบ ${bad}`, `OT plan: added ${ins.length} · updated ${upd} · removed ${del} · skipped ${skip} · no matching employee ${unm} · invalid ${bad}`);
+}
+async function savePlanForm() {
+  const recs = [];
+  planGrid.forEach(r => {
+    const e = employeesData.find(x => String(x.startRow) === String(r.emp)); if (!e) return;
+    planDays.forEach((d, k) => { const v = r.h[k]; if (v === '' || v == null) return; const h = num(v); if (h == null) return;
+      recs.push({ employee_id: e.startRow, emp_code: e.empId, emp_name: e.name, process: T(r.process), shift: T(r.shift), plan_date: d, plan_hours: h, ot_type: T(r.ot_type), note: T(r.note), reason: T(r.reason), source: 'web' }); });
+  });
+  if (!recs.length) return alert(L('ยังไม่มีข้อมูลที่จะบันทึก (เลือกพนักงานและใส่ชั่วโมง)', 'Nothing to save (pick employees and enter hours)'));
+  await formRun(() => savePlan(recs));
+}
+DM_IMPORT.plan = async function (map) {
+  const recs = new Map(); let bad = 0, unm = 0;
+  dmRows.forEach(r => {
+    const c = k => cellOf(r, map, k), emp = findEmp(code0(c('emp_code')), T(c('emp_name')));
+    const code = emp ? emp.empId : code0(c('emp_code')), name = emp ? emp.name : T(c('emp_name'));
+    if (!code && !name) { bad++; return; } if (!emp) unm++;
+    map._dates.forEach(i => {
+      const raw = String(r[i] ?? '').trim(); if (!raw) return; const h = parseFloat(raw.replace(',', '.')); if (isNaN(h)) return;
+      const pd = planDate(dmHeaders[i]); if (!pd) return;
+      recs.set(planKey(code, name, pd), { employee_id: emp ? emp.startRow : null, emp_code: code, emp_name: name, process: T(c('process')), shift: T(c('shift')), plan_date: pd, plan_hours: h, ot_type: T(c('ot_type')), note: T(c('note')), reason: T(c('reason')), source: 'web-import' });
+    });
+  });
+  return savePlan([...recs.values()], unm, bad);
+};
+function planPivot(rows, colOf) {
+  const m = new Map();
+  [...rows].sort((a, b) => a.plan_date.localeCompare(b.plan_date)).forEach(r => {
+    const w = otWho(r), o = m.get(w.key) || { ...w, proc: new Set(), sh: new Set(), ty: new Set(), nt: new Set(), rs: new Set(), cells: new Map(), total: 0 };
+    const c = colOf(r.plan_date), v = Number(r.plan_hours) || 0; o.cells.set(c, (o.cells.get(c) || 0) + v); o.total += v;
+    if (r.process) o.proc.add(r.process); if (r.shift) o.sh.add(r.shift); if (r.ot_type) o.ty.add(r.ot_type); if (r.note) o.nt.add(r.note); if (r.reason) o.rs.add(r.reason);
+    m.set(w.key, o);
+  });
+  return [...m.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+async function planDel(id) {
+  if (!isUnlocked() || !confirm(L('ลบรายการแผนนี้?', 'Delete this plan record?'))) return;
+  const { error } = await supabaseClient.from('mp_ot_plans').delete().eq('id', id); if (error) return alert(error.message);
+  await refreshLogs(); renderOT();
+}
+function renderPlan() {
+  byId('otAnchor').value = otA;
+  byId('otModes').querySelectorAll('button').forEach(b => { const on = b.dataset.m === otM; b.classList.toggle('btn-primary', on); b.classList.toggle('btn-outline-primary', !on); });
+  const [s, e] = otEffRange(), custom = !!(rFrom || rTo);
+  byId('otRange').textContent = custom ? (rFrom || '…') + ' → ' + (rTo || '…') : (s === e ? s : s + ' → ' + e);
+  const sel = byId('otEmp'), cur = sel.value, ppl = new Map();
+  planRows.forEach(r => { const w = otWho(r); ppl.set(w.key, (w.code ? w.code + ' ' : '') + w.name); });
+  sel.innerHTML = `<option value="">${tx('otAll')}</option>` + [...ppl].sort((a, b) => a[1].localeCompare(b[1])).map(([k, l]) => `<option value="${xE(k)}">${xE(l)}</option>`).join(''); sel.value = cur;
+  const rows = planRows.filter(r => r.plan_date >= s && r.plan_date <= e && (!sel.value || otWho(r).key === sel.value));
+  const tot = rows.reduce((a, r) => a + (Number(r.plan_hours) || 0), 0);
+  byId('otKpi').innerHTML = [[L('⏱ แผน OT (h)', '⏱ Planned OT (h)'), n2(tot)], [L('พนักงาน', 'People'), new Set(rows.map(r => otWho(r).key)).size], [L('รายการ', 'Records'), rows.length]]
+    .map(([l, v]) => `<div class="col-4 col-md-3"><div class="emp-card p-3 text-center"><div class="small text-muted">${l}</div><div class="fs-4 fw-bold">${v}</div></div></div>`).join('');
+  let h = '';
+  if (rows.length && otM === 'day' && !custom) {
+    h = `<table class="table table-sm table-hover align-middle mb-0"><thead class="table-success"><tr><th>${L('รหัส', 'ID')} 工号</th><th>制程</th><th>${L('ชื่อ', 'Name')} 姓名</th><th>${L('กะ', 'Shift')} 班别</th><th>加班类型</th><th class="text-end">${L('ชั่วโมง', 'Hours')}</th><th>备注</th><th>加班理由</th><th></th></tr></thead><tbody>` +
+      [...rows].sort((a, b) => otWho(a).name.localeCompare(otWho(b).name)).map(r => { const w = otWho(r);
+        return `<tr><td>${xE(w.code)}</td><td>${xE(r.process || '')}</td><td>${xE(w.name)}</td><td>${xE(r.shift || '')}</td><td>${xE(r.ot_type || '')}</td><td class="text-end fw-bold">${n2(Number(r.plan_hours))}H</td><td class="small">${xE(r.note || '')}</td><td class="small">${xE(r.reason || '')}</td><td>${isUnlocked() ? `<button class="btn btn-sm btn-outline-danger py-0" onclick="planDel(${r.id})"><i class="bi bi-trash"></i></button>` : ''}</td></tr>`; }).join('') + '</tbody></table>';
+  } else if (rows.length) {
+    const dates = rows.map(r => r.plan_date).sort(), a = custom ? dates[0] : s, b = custom ? dates[dates.length - 1] : e, span = (new Date(b) - new Date(a)) / 864e5;
+    let cols = [], colOf, lab;
+    if ((otM === 'year' && !custom) || span > 62) { colOf = d => d.slice(0, 7); lab = c => c.slice(2); cols = otM === 'year' && !custom ? Array.from({ length: 12 }, (_, i) => `${s.slice(0, 4)}-${p2(i + 1)}`) : [...new Set(rows.map(r => colOf(r.plan_date)))].sort(); }
+    else { colOf = d => d; lab = c => c.slice(5); for (let d = a; d <= b; d = addDays(d, 1)) cols.push(d); }
+    const P = planPivot(rows, colOf), colSum = c => n2(P.reduce((x, o) => x + (o.cells.get(c) || 0), 0));
+    h = `<table class="table table-sm table-bordered align-middle text-center mb-0" style="font-size:12.5px"><thead class="table-success"><tr><th>${L('รหัส', 'ID')} 工号</th><th>制程</th><th class="text-start">${L('ชื่อ', 'Name')} 姓名</th><th>${L('กะ', 'Shift')} 班别</th>${cols.map(c => `<th>${lab(c)}</th>`).join('')}<th>${L('รวม', 'Total')}</th><th>加班类型</th><th class="text-start">备注</th><th class="text-start">加班理由</th></tr></thead><tbody>` +
+      P.map(o => `<tr><td>${xE(o.code)}</td><td>${xE(sj(o.proc))}</td><td class="text-start">${xE(o.name)}</td><td>${xE(sj(o.sh))}</td>${cols.map(c => `<td>${o.cells.has(c) ? n2(o.cells.get(c)) + 'H' : ''}</td>`).join('')}<td class="fw-bold">${n2(o.total)}H</td><td>${xE(sj(o.ty))}</td><td class="text-start small">${xE(sj(o.nt))}</td><td class="text-start small">${xE(sj(o.rs))}</td></tr>`).join('') +
+      `</tbody><tfoot class="table-light fw-bold"><tr><td colspan="4" class="text-start">${L('รวมทั้งหมด', 'Total')}</td>${cols.map(c => `<td>${colSum(c)}H</td>`).join('')}<td>${n2(tot)}H</td><td colspan="3"></td></tr></tfoot></table>`;
+  }
+  byId('otTable').innerHTML = h || '<div class="text-muted p-3">—</div>';
 }
 
 /* ---------- OT tab ---------- */
@@ -1522,14 +1720,17 @@ async function loadOT() {
   renderOT();
 }
 async function otDel(id) {
+  if (!isUnlocked()) return;
   if (!confirm(L('ลบรายการ OT นี้?', 'Delete this OT record?'))) return;
   const { error } = await supabaseClient.from('mp_ot_logs').delete().eq('id', id);
-  if (error) return alert(error.message); loadOT();
+  if (error) return alert(error.message); await loadOT(); renderCards(); renderOtHist();
 }
 function renderOT() {
+  byId('otViews').querySelectorAll('button').forEach(b => { const on = b.dataset.v === otView; b.classList.toggle('btn-primary', on); b.classList.toggle('btn-outline-primary', !on); });
+  if (otView === 'plan') return renderPlan();
   byId('otAnchor').value = otA;
   byId('otModes').querySelectorAll('button').forEach(b => { const on = b.dataset.m === otM; b.classList.toggle('btn-primary', on); b.classList.toggle('btn-outline-primary', !on); });
-  const [s, e] = otRange(otM, otA); byId('otRange').textContent = s === e ? s : s + ' → ' + e;
+  const [s, e] = otEffRange(); byId('otRange').textContent = (rFrom || rTo) ? (rFrom || '…') + ' → ' + (rTo || '…') : (s === e ? s : s + ' → ' + e);
   const sel = byId('otEmp'), cur = sel.value, ppl = new Map();
   otRows.forEach(r => { const w = otWho(r); ppl.set(w.key, (w.code ? w.code + ' ' : '') + w.name); });
   sel.innerHTML = `<option value="">${tx('otAll')}</option>` + [...ppl].sort((a, b) => a[1].localeCompare(b[1])).map(([k, l]) => `<option value="${xE(k)}">${xE(l)}</option>`).join('');
@@ -1540,9 +1741,9 @@ function renderOT() {
     .map(([l, v]) => `<div class="col-4 col-md-3"><div class="emp-card p-3 text-center"><div class="small text-muted">${l}</div><div class="fs-4 fw-bold">${v}</div></div></div>`).join('');
   let h = '';
   if (otM === 'day') {
-    if (rows.length) h = `<table class="table table-sm table-hover align-middle mb-0"><thead class="table-light"><tr><th>${L('ชื่อ', 'Name')}</th><th>${L('รหัส', 'ID')}</th><th>${L('กะ', 'Shift')} 班别</th><th>${L('ประเภทวัน', 'Day type')}</th><th class="text-end">OT (h)</th><th></th></tr></thead><tbody>` +
+    if (rows.length) h = `<table class="table table-sm table-hover align-middle mb-0"><thead class="table-light"><tr><th>${L('ชื่อ', 'Name')}</th><th>${L('รหัส', 'ID')}</th><th>${L('กะ', 'Shift')} 班别</th><th>制程</th><th>${L('ประเภทวัน', 'Day type')}</th><th>${L('ประเภท OT', 'OT type')}</th><th class="text-end">OT (h)</th><th>${L('หมายเหตุ', 'Note')}</th><th>${L('เหตุผล', 'Reason')}</th><th></th></tr></thead><tbody>` +
       rows.sort((a, b) => otWho(a).name.localeCompare(otWho(b).name)).map(r => { const w = otWho(r);
-        return `<tr><td>${xE(w.name)}</td><td>${xE(w.code)}</td><td>${xE(r.shift || '')}</td><td>${xE(otT(dayKind(r.day_type)))} <span class="text-muted small">${xE(r.day_type || '')}</span></td><td class="text-end fw-bold">${hrs(r)}</td><td class="text-end"><button class="btn btn-sm btn-outline-danger py-0" onclick="otDel(${r.id})"><i class="bi bi-trash"></i></button></td></tr>`; }).join('') + '</tbody></table>';
+        return `<tr><td>${xE(w.name)}</td><td>${xE(w.code)}</td><td>${xE(r.shift || '')}</td><td>${xE(r.process || '')}</td><td>${xE(otT(dayKind(r.day_type)))} <span class="text-muted small">${xE(r.day_type || '')}</span></td><td>${xE(r.ot_type || '')}</td><td class="text-end fw-bold">${hrs(r)}</td><td class="small">${xE(r.note || '')}</td><td class="small">${xE(r.reason || '')}</td><td class="text-end">${isUnlocked() ? `<button class="btn btn-sm btn-outline-danger py-0" onclick="otDel(${r.id})"><i class="bi bi-trash"></i></button>` : ''}</td></tr>`; }).join('') + '</tbody></table>';
   } else {
     const m = new Map();
     rows.forEach(r => { const w = otWho(r), o = m.get(w.key) || { ...w, sh: new Set(), work: 0, rest: 0, hol: 0, n: 0 }; o[dayKind(r.day_type)] += hrs(r); o.n++; if (r.shift) o.sh.add(r.shift); m.set(w.key, o); });
@@ -1554,40 +1755,216 @@ function renderOT() {
   byId('otTable').innerHTML = h || '<div class="text-muted p-3">—</div>';
 }
 
-/* ---------- QUOTA admin ---------- */
-const QT = ['annual', 'personal', 'sick'];
-function openQuotaModal() { renderQuota(); renderQuotaHist(); byId('qNote').value = ''; bootstrap.Modal.getOrCreateInstance(byId('quotaModal')).show(); }
+/* ---------- QUOTA admin (inside Add Data > quota) ---------- */
 function renderQuota() {
-  byId('qTable').innerHTML = `<table class="table table-sm align-middle text-center"><thead class="table-light"><tr><th class="text-start">${L('พนักงาน', 'Employee')}</th>${QT.map(t => `<th>${LEAVE_LABELS[t]}</th>`).join('')}</tr></thead><tbody>` +
+  const box = byId('qTable'); if (!box) return;
+  box.innerHTML = `<table class="table table-sm align-middle text-center"><thead class="table-light"><tr><th class="text-start">${L('พนักงาน', 'Employee')}</th>${QT.map(t => `<th>${LEAVE_LABELS[t]}</th>`).join('')}</tr></thead><tbody>` +
     employeesData.map(e => `<tr><td class="text-start">${xE(e.empId)} ${xE(e.name)}</td>${QT.map(t => { const q = e.leaves[t] ? e.leaves[t].quota : '';
       return `<td><input type="number" step="any" min="0" class="form-control form-control-sm text-center mx-auto" style="width:90px" data-e="${e.startRow}" data-t="${t}" data-old="${q}" value="${q}"></td>`; }).join('')}</tr>`).join('') + '</tbody></table>';
 }
-async function renderQuotaHist() {
-  const box = byId('qHist'); box.textContent = '…';
-  try {
-    const { data, error } = await supabaseClient.from('mp_quota_logs').select('*').order('id', { ascending: false }).limit(50); if (error) throw error;
-    box.innerHTML = `<table class="table table-sm"><thead class="table-light"><tr><th>${L('เวลา', 'Time')}</th><th>${L('พนักงาน', 'Employee')}</th><th>${L('ประเภท', 'Type')}</th><th>${L('เดิม → ใหม่', 'Old → New')}</th><th>${L('หมายเหตุ', 'Note')}</th></tr></thead><tbody>` +
-      data.map(r => { const e = employeesData.find(x => x.startRow === r.employee_id);
-        return `<tr><td>${xE(new Date(r.created_at).toLocaleString(currentLang === 'th' ? 'th-TH' : 'en-GB', { timeZone: 'Asia/Bangkok' }))}</td><td>${xE(e ? e.name : r.employee_id)}</td><td>${xE(LEAVE_LABELS[r.leave_key] || r.leave_key)}</td><td>${r.old_quota ?? '—'} → <b>${r.new_quota}</b></td><td>${xE(r.note || '')}</td></tr>`; }).join('') + '</tbody></table>';
-  } catch (e) { box.textContent = e.message; }
+function renderQuotaHist() {
+  const box = byId('qHist'); if (!box) return;
+  const data = [...quotaLogs].sort((a, b) => b.id - a.id).slice(0, 50);
+  box.innerHTML = `<table class="table table-sm"><thead class="table-light"><tr><th>${L('เวลา', 'Time')}</th><th>${L('พนักงาน', 'Employee')}</th><th>${L('ประเภท', 'Type')}</th><th>${L('เดิม → ใหม่', 'Old → New')}</th><th>${L('หมายเหตุ', 'Note')}</th></tr></thead><tbody>` +
+    data.map(r => { const e = employeesData.find(x => x.startRow === r.employee_id);
+      return `<tr><td>${xE(new Date(r.created_at).toLocaleString(currentLang === 'th' ? 'th-TH' : 'en-GB', { timeZone: 'Asia/Bangkok' }))}</td><td>${xE(e ? e.name : r.employee_id)}</td><td>${xE(LEAVE_LABELS[r.leave_key] || r.leave_key)}</td><td>${r.old_quota ?? '—'} → <b>${r.new_quota}</b></td><td>${xE(r.note || '')}</td></tr>`; }).join('') + '</tbody></table>';
+}
+async function applyQuotaChanges(ch, note) {            // ch: [{e: employee id, t: leave key, o: old, n: new}]
+  for (const c of ch) {
+    const lf = employeesData.find(x => x.startRow === c.e).leaves[c.t];
+    if (lf) await supabaseClient.from('mp_leaves').update({ quota: c.n }).eq('id', lf.row).then(chk);
+    else await supabaseClient.from('mp_leaves').insert({ employee_id: c.e, leave_key: c.t, label: LEAVE_LABELS[c.t], quota: c.n, used: 0 }).then(chk);
+  }
+  await supabaseClient.from('mp_quota_logs').insert(ch.map(c => ({ employee_id: c.e, leave_key: c.t, old_quota: c.o, new_quota: c.n, note: note || null, changed_by: 'admin-web' }))).then(chk);
 }
 async function saveQuotas() {
   const note = byId('qNote').value.trim() || null, ch = [];
   byId('qTable').querySelectorAll('input').forEach(i => { if (i.value !== '' && (i.dataset.old === '' || Number(i.value) !== Number(i.dataset.old)))
     ch.push({ e: +i.dataset.e, t: i.dataset.t, o: i.dataset.old === '' ? null : Number(i.dataset.old), n: Number(i.value) }); });
   if (!ch.length) return alert(L('ไม่มีการเปลี่ยนแปลง', 'No changes'));
-  showLoader(true, L('กำลังบันทึกข้อมูล...', 'Saving...'));
-  try {
-    for (const c of ch) {
-      const lf = employeesData.find(x => x.startRow === c.e).leaves[c.t];
-      if (lf) await supabaseClient.from('mp_leaves').update({ quota: c.n }).eq('id', lf.row).then(chk);
-      else await supabaseClient.from('mp_leaves').insert({ employee_id: c.e, leave_key: c.t, label: LEAVE_LABELS[c.t], quota: c.n, used: 0 }).then(chk);
-    }
-    await supabaseClient.from('mp_quota_logs').insert(ch.map(c => ({ employee_id: c.e, leave_key: c.t, old_quota: c.o, new_quota: c.n, note, changed_by: 'admin-web' }))).then(chk);
-    await reloadAll(); renderQuota(); renderQuotaHist(); byId('qNote').value = '';
-  } catch (err) { alert('Error: ' + (err.message || err)); }
-  showLoader(false);
+  const ok = await formRun(async () => { await applyQuotaChanges(ch, note); return L(`บันทึกโควต้า ${ch.length} รายการ (เก็บค่าเดิม → ใหม่ใน Log แล้ว)`, `${ch.length} quota change(s) saved (old → new logged)`); });
+  if (ok) { renderQuota(); renderQuotaHist(); byId('qNote').value = ''; }
 }
+
+/* ---------- date range filter (OT + leave summary / log) ---------- */
+let rFrom = '', rTo = '', curTab = 'cards', lvView = 'cards', logKind = 'leave';
+const inRg = d => d && (!rFrom || d >= rFrom) && (!rTo || d <= rTo);
+const bkkDate = ts => ts ? new Date(new Date(ts).getTime() + 7 * 36e5).toISOString().slice(0, 10) : '';
+function otEffRange() { return (rFrom || rTo) ? [rFrom || '0000-01-01', rTo || '9999-12-31'] : otRange(otM, otA); }
+function syncRangeBar() {
+  const show = curTab === 'ot' || (curTab === 'cards' && (lvView === 'summary' || lvView === 'log'));
+  byId('rangeBar').classList.toggle('d-none', !show);
+  byId('rgHint').textContent = curTab === 'ot'
+    ? ((rFrom || rTo) ? L('กำลังใช้ช่วงวันที่กำหนดเอง (ปุ่ม ◀ ▶ ไม่มีผล)', 'Custom range active (◀ ▶ disabled)') : L('ว่าง = ใช้ช่วงตามรายวัน/สัปดาห์/เดือน/ปี', 'Empty = follow the day / week / month / year view'))
+    : L('ใช้กับ สรุปรายคน และ Log', 'Applies to Summary and Log');
+}
+function rangeChanged() { rFrom = byId('rgFrom').value; rTo = byId('rgTo').value; if (rFrom && rTo && rFrom > rTo) { [rFrom, rTo] = [rTo, rFrom]; byId('rgFrom').value = rFrom; byId('rgTo').value = rTo; } syncRangeBar(); renderCards(); if (curTab === 'ot') renderOT(); }
+function rangeClear() { byId('rgFrom').value = ''; byId('rgTo').value = ''; rangeChanged(); }
+
+/* ---------- leave views: cards (dispatcher) / table / summary / log ---------- */
+function lvSetView(v) {
+  lvView = v;
+  byId('lvViews').querySelectorAll('button').forEach(b => { const on = b.dataset.v === v; b.classList.toggle('btn-primary', on); b.classList.toggle('btn-outline-primary', !on); });
+  syncRangeBar(); renderCards();
+}
+function renderCards() {
+  if (!isUnlocked()) return;
+  [['cards', 'viewCards'], ['table', 'viewTable'], ['summary', 'viewSummary'], ['log', 'viewLog']].forEach(([v, id]) => byId(id).classList.toggle('d-none', v !== lvView));
+  if (lvView === 'cards') renderCardsView(); else if (lvView === 'table') renderTableView(); else if (lvView === 'summary') renderSummaryView(); else renderLogView();
+}
+function visibleEmps() {
+  const kw = byId('searchInput').value.toLowerCase(), sb = byId('sortSelect').value;
+  let l = employeesData.map((e, i) => ({ ...e, origIndex: i, stats: calcFairStats(e) }));
+  if (kw) l = l.filter(e => String(e.name).toLowerCase().includes(kw) || String(e.empId).toLowerCase().includes(kw));
+  if (sb === 'mostUsed') l.sort((a, b) => b.stats.avgPct - a.stats.avgPct); else if (sb === 'leastUsed') l.sort((a, b) => a.stats.avgPct - b.stats.avgPct);
+  return l;
+}
+function renderTableView() {
+  const t = i18n[currentLang], names = { annual: t.typeAnnual, personal: t.typePersonal, sick: t.typeSick };
+  byId('viewTable').innerHTML = `<div class="emp-card p-2"><div class="table-responsive"><table class="table table-sm table-hover align-middle mb-0 text-center"><thead class="table-light"><tr><th class="text-start">${t.pdfThEmpId}</th><th class="text-start">${t.pdfThName}</th>${QT.map(k => `<th>${names[k]}<div class="small fw-normal text-muted">${L('ใช้/โควต้า (เหลือ)', 'used/quota (left)')}</div></th>`).join('')}<th>${t.scoreLabel}</th><th class="text-start">${t.pdfThNote}</th><th></th></tr></thead><tbody>` +
+    visibleEmps().map(e => `<tr><td class="text-start"><span class="badge bg-secondary-subtle text-secondary-emphasis">${xE(e.empId)}</span></td><td class="text-start fw-medium">${xE(e.name)}</td>` +
+      QT.map(k => { const l = e.leaves[k]; if (!l) return '<td class="text-muted">—</td>'; const pct = l.quota > 0 ? Math.round(l.used / l.quota * 100) : (l.used > 0 ? 100 : 0);
+        return `<td><span class="fw-bold" style="color:${getBarColor(pct)}">${n2(l.used)}/${n2(l.quota)}</span> <span class="small text-muted">(${n2(l.quota - l.used)})</span></td>`; }).join('') +
+      `<td class="fw-bold" style="color:${getBarColor(e.stats.avgPct)}">${e.stats.avgPct}%</td><td class="text-start small">${xE(e.note || '')}</td><td><button class="btn btn-sm btn-light border py-0 px-1" onclick="openEditModal(${e.origIndex})"><i class="bi bi-pencil-square"></i></button></td></tr>`).join('') + '</tbody></table></div></div>';
+}
+function summaryRows() {                                  // per employee: leave (from mp_leave_logs) + OT, inside the date range
+  const lv = new Map(), ot = new Map();
+  leaveLogs.forEach(r => { if (!inRg(r.leave_date)) return; const o = lv.get(r.employee_id) || { annual: 0, personal: 0, sick: 0 }; if (o[r.leave_key] != null) o[r.leave_key] += Number(r.hours) || 0; lv.set(r.employee_id, o); });
+  otRows.forEach(r => { if (!inRg(r.ot_date) || r.employee_id == null) return; const o = ot.get(r.employee_id) || { h: 0, n: 0 }; o.h += Number(r.ot_hours) || 0; o.n++; ot.set(r.employee_id, o); });
+  return visibleEmps().map(e => { const a = lv.get(e.startRow) || { annual: 0, personal: 0, sick: 0 }, o = ot.get(e.startRow) || { h: 0, n: 0 };
+    return { e, ...a, lh: a.annual + a.personal + a.sick, oth: o.h, otn: o.n }; });
+}
+const dh = h => `${n2(h / HOURS_PER_DAY)}${L('ว', 'd')} <span class="text-muted small">(${n2(h)}h)</span>`;
+function renderSummaryView() {
+  const t = i18n[currentLang], rows = summaryRows(), sum = k => rows.reduce((a, r) => a + r[k], 0);
+  byId('viewSummary').innerHTML = `<div class="emp-card p-2"><div class="px-2 pt-1 small text-muted">${(rFrom || rTo) ? (rFrom || '…') + ' → ' + (rTo || '…') : L('ทุกช่วงเวลา', 'All time')} · ${L('วันลาจาก Log (1 วัน = ' + HOURS_PER_DAY + ' ชม.)', 'leave from log (1 day = ' + HOURS_PER_DAY + ' h)')}</div><div class="table-responsive"><table class="table table-sm table-hover align-middle mb-0"><thead class="table-light"><tr><th>${t.pdfThEmpId}</th><th>${t.pdfThName}</th><th class="text-end">${t.typeAnnual}</th><th class="text-end">${t.typePersonal}</th><th class="text-end">${t.typeSick}</th><th class="text-end">${L('รวมลา', 'Total leave')}</th><th class="text-end">OT (h)</th><th class="text-end">OT ${L('รายการ', 'rec.')}</th></tr></thead><tbody>` +
+    rows.map(r => `<tr><td>${xE(r.e.empId)}</td><td class="fw-medium">${xE(r.e.name)}</td><td class="text-end">${dh(r.annual)}</td><td class="text-end">${dh(r.personal)}</td><td class="text-end">${dh(r.sick)}</td><td class="text-end fw-bold">${dh(r.lh)}</td><td class="text-end fw-bold">${n2(r.oth)}</td><td class="text-end">${r.otn}</td></tr>`).join('') +
+    `</tbody><tfoot class="table-light fw-bold"><tr><td colspan="2">${L('รวมทั้งหมด', 'Total')}</td><td class="text-end">${dh(sum('annual'))}</td><td class="text-end">${dh(sum('personal'))}</td><td class="text-end">${dh(sum('sick'))}</td><td class="text-end">${dh(sum('lh'))}</td><td class="text-end">${n2(sum('oth'))}</td><td class="text-end">${sum('otn')}</td></tr></tfoot></table></div></div>`;
+}
+function setLogKind(k) { logKind = k; renderLogView(); }
+function renderLogView() {
+  const CAP = 500, em = new Map(employeesData.map(e => [e.startRow, e]));
+  let head, rows, total;
+  if (logKind === 'leave') {
+    const d = leaveLogs.filter(r => inRg(r.leave_date)).sort((a, b) => b.leave_date.localeCompare(a.leave_date) || b.id - a.id); total = d.length;
+    head = [L('วันที่', 'Date'), L('รหัส', 'ID'), L('ชื่อ', 'Name'), L('ประเภท', 'Type'), L('ชั่วโมง', 'Hours'), L('เหตุผล', 'Reason'), L('ที่มา', 'Source'), ''];
+    rows = d.slice(0, CAP).map(r => { const e = em.get(r.employee_id); return [xE(r.leave_date), xE(e ? e.empId : ''), xE(e ? e.name : r.employee_id), xE(r.label || r.leave_key), r.hours, xE(r.reason || ''), xE(r.source || ''), `<button class="btn btn-sm btn-outline-danger py-0" onclick="delLeaveLog(${r.id})"><i class="bi bi-trash"></i></button>`]; });
+  } else if (logKind === 'ot') {
+    const d = otRows.filter(r => inRg(r.ot_date)).sort((a, b) => b.ot_date.localeCompare(a.ot_date) || b.id - a.id); total = d.length;
+    head = [L('วันที่', 'Date'), L('รหัส', 'ID'), L('ชื่อ', 'Name'), L('กะ', 'Shift'), L('ประเภทวัน', 'Day type'), 'OT (h)', L('ที่มา', 'Source'), ''];
+    rows = d.slice(0, CAP).map(r => { const w = otWho(r); return [xE(r.ot_date), xE(w.code), xE(w.name), xE(r.shift || ''), xE(otT(dayKind(r.day_type))), r.ot_hours, xE(r.source || ''), `<button class="btn btn-sm btn-outline-danger py-0" onclick="otDel(${r.id})"><i class="bi bi-trash"></i></button>`]; });
+  } else {
+    const d = quotaLogs.filter(r => inRg(bkkDate(r.created_at))).sort((a, b) => b.id - a.id); total = d.length;
+    head = [L('เวลา', 'Time'), L('รหัส', 'ID'), L('ชื่อ', 'Name'), L('ประเภท', 'Type'), L('เดิม → ใหม่', 'Old → New'), L('หมายเหตุ', 'Note'), L('โดย', 'By')];
+    rows = d.slice(0, CAP).map(r => { const e = em.get(r.employee_id); return [xE(new Date(r.created_at).toLocaleString(currentLang === 'th' ? 'th-TH' : 'en-GB', { timeZone: 'Asia/Bangkok' })), xE(e ? e.empId : ''), xE(e ? e.name : r.employee_id), xE(LEAVE_LABELS[r.leave_key] || r.leave_key), `${r.old_quota ?? '—'} → <b>${r.new_quota}</b>`, xE(r.note || ''), xE(r.changed_by || '')]; });
+  }
+  byId('viewLog').innerHTML = `<div class="emp-card p-3"><div class="d-flex flex-wrap gap-2 align-items-center mb-2"><div class="btn-group btn-group-sm">` +
+    [['leave', L('ประวัติการลา', 'Leave log')], ['ot', 'OT log'], ['quota', L('ประวัติโควต้า', 'Quota log')]].map(([k, l]) => `<button class="btn ${logKind === k ? 'btn-primary' : 'btn-outline-primary'}" onclick="setLogKind('${k}')">${l}</button>`).join('') +
+    `</div><span class="small text-muted">${total} ${L('รายการ', 'records')}${total > CAP ? ' · ' + L('แสดง ' + CAP + ' รายการล่าสุด (ดูทั้งหมดใน Excel)', 'showing latest ' + CAP + ' (full list in Excel)') : ''}</span></div>` +
+    `<div class="table-responsive"><table class="table table-sm table-hover align-middle mb-0"><thead class="table-light"><tr>${head.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('') || `<tr><td colspan="${head.length}" class="text-muted text-center">—</td></tr>`}</tbody></table></div></div>`;
+}
+
+/* ---------- Export: Excel (.xlsx, every tab / view) and PDF ---------- */
+function otAgg(rows, mode) {                               // period x person, split by workday / rest / holiday
+  const m = new Map();
+  rows.forEach(r => {
+    const w = otWho(r), d = r.ot_date, p = mode === 'week' ? otRange('week', d).join(' → ') : mode === 'month' ? d.slice(0, 7) : d.slice(0, 4), key = p + '|' + w.key;
+    const o = m.get(key) || { p, ...w, sh: new Set(), work: 0, rest: 0, hol: 0, n: 0 }; o[dayKind(r.day_type)] += Number(r.ot_hours) || 0; o.n++; if (r.shift) o.sh.add(r.shift); m.set(key, o);
+  });
+  return [...m.values()].sort((a, b) => b.p.localeCompare(a.p) || a.name.localeCompare(b.name))
+    .map(o => [o.p, o.code, o.name, [...o.sh].join(', '), n2(o.work), n2(o.rest), n2(o.hol), n2(o.work + o.rest + o.hol), o.n]);
+}
+function buildSections(o = {}) {
+  const t = i18n[currentLang], em = new Map(employeesData.map(e => [e.startRow, e]));
+  const rg = o.range || ((rFrom || rTo) ? [rFrom || '0000-01-01', rTo || '9999-12-31'] : null), inR = d => !rg || (d >= rg[0] && d <= rg[1]);
+  const out = [], ot = otRows.filter(r => inR(r.ot_date));
+  const stamp = ts => new Date(ts).toLocaleString('en-GB', { timeZone: 'Asia/Bangkok' });
+  // 1 leave summary (cards / table views)
+  { const body = []; employeesData.forEach(e => QT.forEach(k => { const l = e.leaves[k]; if (l) body.push([e.empId, e.name, LEAVE_LABELS[k], l.quota, n2(l.used), n2(l.quota - l.used), e.note || '']); }));
+    out.push({ key: 'leave', name: 'Leave Summary', title: L('สรุปโควต้าและวันลา (มุมมองการ์ด/ตาราง)', 'Leave summary (cards / table view)'), head: [t.pdfThEmpId, t.pdfThName, t.pdfThType, t.pdfThQuota, t.pdfThUsed, t.pdfThRemaining, t.pdfThNote], body }); }
+  // 2 overview
+  { const list = employeesData.map(e => ({ e, s: calcFairStats(e) })).sort((a, b) => b.s.avgPct - a.s.avgPct), avg = list.length ? Math.round(list.reduce((a, x) => a + x.s.avgPct, 0) / list.length) : 0;
+    out.push({ key: 'overview', name: 'Overview', title: L('ภาพรวมเปรียบเทียบ (ดัชนีการลา %)', 'Team overview (leave index %)'), head: [t.pdfThEmpId, t.pdfThName, t.typeAnnual + ' %', t.typePersonal + ' %', t.typeSick + ' %', t.scoreLabel + ' %', t.pdfThUsed, t.pdfThQuota],
+      body: list.map(x => [x.e.empId, x.e.name, Math.round(x.s.pctMap.annual), Math.round(x.s.pctMap.personal), Math.round(x.s.pctMap.sick), x.s.avgPct, n2(x.s.totalUsed), n2(x.s.totalQuota)]), foot: [L('เฉลี่ยทีม', 'Team avg'), '', '', '', '', avg, '', '']}); }
+  // 3 person summary (range)
+  { const lv = new Map(), otm = new Map();
+    leaveLogs.forEach(r => { if (!inR(r.leave_date)) return; const x = lv.get(r.employee_id) || { annual: 0, personal: 0, sick: 0 }; if (x[r.leave_key] != null) x[r.leave_key] += Number(r.hours) || 0; lv.set(r.employee_id, x); });
+    ot.forEach(r => { if (r.employee_id == null) return; const x = otm.get(r.employee_id) || { h: 0, n: 0 }; x.h += Number(r.ot_hours) || 0; x.n++; otm.set(r.employee_id, x); });
+    out.push({ key: 'person', name: 'Person Summary', title: L('สรุปรายคน (วันลาจาก Log + OT)', 'Per-person summary (leave log + OT)'),
+      head: [t.pdfThEmpId, t.pdfThName, t.typeAnnual + ' (h)', t.typePersonal + ' (h)', t.typeSick + ' (h)', L('รวมลา (วัน)', 'Leave total (days)'), 'OT (h)', 'OT ' + L('รายการ', 'rec.')],
+      body: employeesData.map(e => { const a = lv.get(e.startRow) || { annual: 0, personal: 0, sick: 0 }, x = otm.get(e.startRow) || { h: 0, n: 0 }, h = a.annual + a.personal + a.sick;
+        return [e.empId, e.name, n2(a.annual), n2(a.personal), n2(a.sick), n2(h / HOURS_PER_DAY), n2(x.h), x.n]; }) }); }
+  // 4 leave log
+  out.push({ key: 'leavelog', name: 'Leave Log', title: L('ประวัติการลา', 'Leave log'), head: [L('วันที่', 'Date'), L('รหัส', 'ID'), L('ชื่อ', 'Name'), L('ประเภท', 'Type'), L('ชั่วโมง', 'Hours'), L('เหตุผล', 'Reason'), L('ที่มา', 'Source'), L('บันทึกเมื่อ', 'Created')],
+    body: leaveLogs.filter(r => inR(r.leave_date)).sort((a, b) => b.leave_date.localeCompare(a.leave_date) || b.id - a.id).map(r => { const e = em.get(r.employee_id); return [r.leave_date, e ? e.empId : '', e ? e.name : r.employee_id, r.label || r.leave_key, Number(r.hours), r.reason || '', r.source || '', stamp(r.created_at)]; }) });
+  // 5-8 OT: daily / weekly / monthly / yearly
+  out.push({ key: 'otd', name: 'OT Daily', title: L('OT รายวัน', 'OT daily'), head: [L('วันที่', 'Date'), L('ชื่อ', 'Name'), L('รหัส', 'ID'), L('กะ', 'Shift'), L('ประเภทวัน', 'Day type'), 'OT (h)', L('ลา?', 'Leave?'), L('ประเภทลา', 'Leave cat.'), L('เวลาลา', 'Leave time')],
+    body: [...ot].sort((a, b) => b.ot_date.localeCompare(a.ot_date) || otWho(a).name.localeCompare(otWho(b).name)).map(r => { const w = otWho(r); return [r.ot_date, w.name, w.code, r.shift || '', otT(dayKind(r.day_type)), Number(r.ot_hours), r.is_leave == null ? '' : (r.is_leave ? 'Y' : 'N'), r.leave_category || '', r.leave_time || '']; }) });
+  [['otw', 'OT Weekly', L('OT รายสัปดาห์', 'OT weekly'), 'week', L('สัปดาห์', 'Week')], ['otm', 'OT Monthly', L('OT รายเดือน', 'OT monthly'), 'month', L('เดือน', 'Month')], ['oty', 'OT Yearly', L('OT รายปี', 'OT yearly'), 'year', L('ปี', 'Year')]]
+    .forEach(([key, name, title, mode, pl]) => out.push({ key, name, title, head: [pl, L('รหัส', 'ID'), L('ชื่อ', 'Name'), L('กะ', 'Shift'), otT('work'), otT('rest'), otT('hol'), L('รวม (h)', 'Total (h)'), L('รายการ', 'Records')], body: otAgg(ot, mode) }));
+  // OT plan: daily list + weekly grid (days as columns)
+  { const pl = planRows.filter(r => inR(r.plan_date)).sort((a, b) => b.plan_date.localeCompare(a.plan_date) || otWho(a).name.localeCompare(otWho(b).name));
+    out.push({ key: 'plan', name: 'OT Plan', title: L('แผน OT (รายวัน)', 'OT plan (daily)'), head: [L('วันที่', 'Date'), L('รหัส', 'ID') + ' 工号', L('ชื่อ', 'Name') + ' 姓名', '制程', L('กะ', 'Shift') + ' 班别', L('ชั่วโมง', 'Hours'), '加班类型', '备注', '加班理由'],
+      body: pl.map(r => { const w = otWho(r); return [r.plan_date, w.code, w.name, r.process || '', r.shift || '', Number(r.plan_hours), r.ot_type || '', r.note || '', r.reason || '']; }) });
+    const dates = [...new Set(pl.map(r => r.plan_date))].sort(), P = planPivot(pl, d => d);
+    out.push({ key: 'plangrid', name: 'OT Plan Grid', wide: true, title: L('แผน OT รายสัปดาห์/ช่วงวันที่ (ตารางแผน)', 'OT plan grid (days as columns)'), head: [L('รหัส', 'ID') + ' 工号', '制程', L('ชื่อ', 'Name') + ' 姓名', L('กะ', 'Shift') + ' 班别', ...dates, L('รวม', 'Total'), '加班类型', '备注', '加班理由'],
+      body: P.map(o => [o.code, sj(o.proc), o.name, sj(o.sh), ...dates.map(d => o.cells.has(d) ? n2(o.cells.get(d)) : ''), n2(o.total), sj(o.ty), sj(o.nt), sj(o.rs)]) }); }
+  // 9 quota log
+  out.push({ key: 'quota', name: 'Quota Log', title: L('ประวัติแก้ไขโควต้า', 'Quota change log'), head: [L('เวลา', 'Time'), L('รหัส', 'ID'), L('ชื่อ', 'Name'), L('ประเภท', 'Type'), L('ค่าเดิม', 'Old'), L('ค่าใหม่', 'New'), L('หมายเหตุ', 'Note'), L('โดย', 'By')],
+    body: quotaLogs.filter(r => inR(bkkDate(r.created_at))).sort((a, b) => b.id - a.id).map(r => { const e = em.get(r.employee_id); return [stamp(r.created_at), e ? e.empId : '', e ? e.name : r.employee_id, LEAVE_LABELS[r.leave_key] || r.leave_key, r.old_quota ?? '', Number(r.new_quota), r.note || '', r.changed_by || '']; }) });
+  return isUnlocked() ? out : out.filter(x => ['otd', 'otw', 'otm', 'oty', 'plan', 'plangrid'].includes(x.key));   // OT mode exports OT data only
+}
+async function exportExcel() {
+  showLoader(true, L('กำลังเตรียมไฟล์ Excel...', 'Preparing Excel...'));
+  try { await refreshLogs(); } catch (e) { console.warn(e); }
+  showLoader(false);
+  const wb = XLSX.utils.book_new();
+  buildSections().forEach(s => {
+    const rows = [s.head, ...s.body]; if (s.foot) rows.push(s.foot);
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = s.head.map((h, i) => ({ wch: Math.min(40, Math.max(10, String(h).length + 2, ...s.body.slice(0, 200).map(r => String(r[i] ?? '').length + 2))) }));
+    XLSX.utils.book_append_sheet(wb, ws, s.name);
+  });
+  XLSX.writeFile(wb, 'ManPower_Report_' + nowBkk() + '.xlsx');
+}
+function currentSectionKey() {
+  if (curTab === 'overview') return 'overview';
+  if (curTab === 'ot') return otView === 'plan' ? (otM === 'day' ? 'plan' : 'plangrid') : { day: 'otd', week: 'otw', month: 'otm', year: 'oty' }[otM];
+  return { cards: 'leave', table: 'leave', summary: 'person', log: { leave: 'leavelog', ot: 'otd', quota: 'quota' }[logKind] }[lvView];
+}
+function secHtml(s, first) {
+  const CAP = 400, st = 'border:1px solid #dee2e6;padding:4px 6px;', body = s.body.slice(0, CAP);
+  const td = c => `<td style="${st}${typeof c === 'number' ? 'text-align:right;' : ''}">${xE(c)}</td>`;
+  return `<div style="${first ? '' : 'page-break-before:always;'}margin-bottom:14px"><h5 style="font-weight:700;margin:0 0 6px;color:#0d6efd">${xE(s.title)}</h5>` +
+    `<table style="font-size:10.5px;border-collapse:collapse;width:100%"><thead><tr style="background:#212529;color:#fff">${s.head.map(h => `<th style="${st}">${xE(h)}</th>`).join('')}</tr></thead><tbody>` +
+    (body.map((r, i) => `<tr style="page-break-inside:avoid;background:${i % 2 ? '#f8f9fa' : '#fff'}">${r.map(td).join('')}</tr>`).join('') || `<tr><td colspan="${s.head.length}" style="${st}text-align:center;color:#888">—</td></tr>`) +
+    (s.foot ? `<tr style="font-weight:700;background:#e9ecef">${s.foot.map(td).join('')}</tr>` : '') + `</tbody></table>` +
+    (s.body.length > CAP ? `<div style="font-size:10px;color:#888;margin-top:4px">+${s.body.length - CAP} ${L('แถว — ดูทั้งหมดใน Excel', 'more rows — see Excel for the full list')}</div>` : '') + `</div>`;
+}
+async function previewPdf(scope) {
+  showLoader(true, L('กำลังเตรียมรายงาน...', 'Preparing report...'));
+  try { await refreshLogs(); } catch (e) { console.warn(e); }
+  showLoader(false);
+  byId('reportDate').innerText = new Date().toLocaleDateString(currentLang === 'th' ? 'th-TH' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  const all = scope === 'all', key = currentSectionKey();
+  const secs = buildSections(!all && curTab === 'ot' ? { range: otEffRange() } : {}).filter(s => all ? !(s.wide && s.head.length > 12) : s.key === key);
+  byId('pdfSummaryTable').innerHTML = secs.map((s, i) => secHtml(s, i === 0)).join('');
+  bootstrap.Modal.getOrCreateInstance(byId('pdfPreviewModal')).show();
+}
+function downloadPdf() {
+  const opt = { margin: 10, filename: 'ManPower_Report_' + nowBkk() + '.pdf', image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }, pagebreak: { mode: ['css', 'legacy'] } };
+  html2pdf().from(byId('pdfContentArea')).set(opt).save().then(() => bootstrap.Modal.getInstance(byId('pdfPreviewModal')).hide());
+}
+
+/* ---------- i18n for the v3 additions ---------- */
+const X3 = {
+  btnAddData: ['＋ Add Data', '＋ Add Data'], dmTitle: ['＋ Add Data', '＋ Add Data'], dmModeLbl: ['โหมด', 'Mode'], dmMethodLbl: ['ช่องทางป้อนข้อมูล', 'Input method'],
+  exExcel: ['ดาวน์โหลด Excel (ทุกแท็บ/ทุกมุมมอง)', 'Download Excel (all tabs / views)'], exPdf: ['PDF — หน้าที่กำลังดู', 'PDF — current view'], exPdfAll: ['PDF — ทุกแท็บ/ทุกมุมมอง', 'PDF — all tabs / views'],
+  vwCards: ['การ์ด', 'Cards'], vwTable: ['ตาราง', 'Table'], vwSummary: ['สรุปรายคน', 'Summary'], rgTitle: ['ช่วงวันที่', 'Date range'], rgClear: ['ล้างช่วงวันที่', 'Clear range'],
+  tabCards: ['รายบุคคล / วันลา', 'Leave'], pdfModalTitle: ['พรีวิวรายงาน PDF (แนวตั้ง)', 'PDF report preview (portrait)'], pdfHeaderTitle: ['รายงาน ManPower', 'ManPower report'], otActual: ['OT จริง', 'Actual OT'], otPlan: ['แผน OT', 'OT plan'], btnOtDaily: ['ลง OT ประจำวัน', 'Daily OT'], btnOtPlan: ['ลงแพลน OT รายสัปดาห์', 'Weekly OT plan']
+};
+Object.entries(X3).forEach(([k, [a, b]]) => { i18n.th[k] = a; i18n.en[k] = b; });
 </script>
 </body>
 </html>
